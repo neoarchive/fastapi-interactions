@@ -1,18 +1,19 @@
-from fastapi import FastAPI, Request
 from fastapi_interactions import Bot
-from fastapi_interactions.router import CommandRouter, option
+from fastapi_interactions.router import (
+    CommandRouter, option
+)
 from fastapi_interactions.responses import (
     MessageResponse,
     DeferResponse
 )
-from dotenv import load_dotenv
+from environs import env
 import os
 
-load_dotenv()
+env.read_env()
 
-APP_ID = int(os.getenv('APP_ID'))
-PUBLIC_KEY = str(os.getenv('PUBLIC_KEY'))
-BOT_TOKEN = str(os.getenv('BOT_TOKEN'))
+APP_ID = env.int('APP_ID')
+PUBLIC_KEY = env.str('PUBLIC_KEY') 
+BOT_TOKEN = env.str('BOT_TOKEN')
 
 bot = Bot(
     app_id=APP_ID,
