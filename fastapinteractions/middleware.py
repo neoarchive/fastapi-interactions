@@ -39,6 +39,5 @@ class VerifySignatureMiddleware(BaseHTTPMiddleware):
                 status_code=401
             )
         else:
-            print('verified')
             return await call_next(request)
 

@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Request
 from .middleware import VerifySignatureMiddleware
+from .responses import InteractionResponse, MessageResponse
+from fastapi.responses import JSONResponse
 from .models import (
     Command,
     CommandMeta,
-    Option
+    Option,
+    InteractionType
 )
 import requests
 
@@ -59,7 +62,6 @@ class Bot:
                     CommandMeta(name="", description="", type=1)
                 )
             option = Option(name=name, description=description, type=type, required=required)
-            func.__command__meta = meta
             meta.options.append(option)
             func.__command_meta__ = meta 
 
@@ -97,13 +99,13 @@ class Bot:
             }
         
         result = await command.callback(interaction)
-        
-        return {
-            "type": 4,
-            "data": {
-                "content": result
-            }
-        }
+
+        if isinstance(result, InteractionResponse):
+            return JSONResponse(result.to_dict()) 
+
+        return JSONResponse(
+            MessageResponse(str(result)).to_dict()
+        )
     
     def mount(self, app: FastAPI):
         app.add_middleware(VerifySignatureMiddleware, public_key=self.public_key)
@@ -111,7 +113,10 @@ class Bot:
         async def interactions(request: Request):
             payload = await request.json()
 
-            if payload['type'] == 1:
-                return { "type": 1 }
+            if payload['type'] == InteractionType.PING:
+                return {
+                    'type': 1
+                }
             
-            return await self.dispatch(payload)
+            if payload['type'] == InteractionType.APPLICATION_COMMAND:
+                return await self.dispatch(payload)

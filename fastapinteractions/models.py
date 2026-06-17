@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List
+from enum import IntEnum
 
 @dataclass
 class Option:
@@ -20,7 +21,7 @@ class Option:
 class CommandMeta:
     name: str
     description: str
-    options: list = field(default_factory=list) 
+    options: list[Option] = field(default_factory=list) 
     type: int = 1
 
     def as_payload(self):
@@ -38,3 +39,9 @@ class Command:
     callback: callable
     meta: CommandMeta
 
+class InteractionType(IntEnum):
+    PING = 1
+    APPLICATION_COMMAND = 2
+    MESSAGE_COMPONENT = 3
+    APPLICATION_COMMAND_AUTOCOMPLETE = 4
+    MODAL_SUBMIT = 5
