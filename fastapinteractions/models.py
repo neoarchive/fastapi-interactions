@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List
-from enum import IntEnum
+from enum import IntEnum, IntFlag
 
 @dataclass
 class Option:
@@ -45,3 +45,6 @@ class InteractionType(IntEnum):
     MESSAGE_COMPONENT = 3
     APPLICATION_COMMAND_AUTOCOMPLETE = 4
     MODAL_SUBMIT = 5
+
+class MessageFlags(IntFlag):
+    EPHEMERAL = 1 << 6

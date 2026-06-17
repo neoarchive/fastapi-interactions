@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from .models import MessageFlags
 
 
 class InteractionResponse(ABC):
@@ -20,9 +21,26 @@ class MessageResponse(InteractionResponse):
         }
 
         if self.ephemeral:
-            data['flags'] = 64
+            data['flags'] = MessageFlags.EPHEMERAL
 
         return {
             'type': 4,
             'data': data
         }
+    
+@dataclass(slots=True)
+class DeferResponse(InteractionResponse):
+    ephemeral: bool = False
+
+    def to_dict(self):
+        
+        payload = {
+            'type': 5
+        }
+
+        if self.ephemeral:
+            payload['data'] = {
+                'flags': MessageFlags.EPHEMERAL
+            }
+        
+        return payload

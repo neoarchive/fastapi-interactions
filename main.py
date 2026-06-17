@@ -1,6 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapinteractions import Bot 
-from fastapinteractions.responses import MessageResponse
+from fastapinteractions.responses import (
+    MessageResponse,
+    DeferResponse
+)
 from dotenv import load_dotenv
 import os
 
@@ -30,7 +33,7 @@ bot = Bot(
 )
 async def access(ctx):
     user = ctx['member']['user']['username']
-    return MessageResponse(f'Hey {user}. How are ya?')
+    return MessageResponse('whatsup?', ephemeral=True)
 
 
 # bot.sync_commands() -- only call once during deployment if serverless.
