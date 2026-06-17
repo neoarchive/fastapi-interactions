@@ -40,4 +40,3 @@ class VerifySignatureMiddleware(BaseHTTPMiddleware):
         else:
             request.state.raw_body = body
             return await call_next(request)
-

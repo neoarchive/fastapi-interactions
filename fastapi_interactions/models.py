@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
-from typing import List
 from enum import IntEnum, IntFlag
+
 
 @dataclass
 class Option:
@@ -17,11 +17,12 @@ class Option:
             "required": self.required
         }
 
+
 @dataclass(slots=True)
 class CommandMeta:
     name: str
     description: str
-    options: list[Option] = field(default_factory=list) 
+    options: list[Option] = field(default_factory=list)
     type: int = 1
 
     def as_payload(self):
@@ -34,10 +35,17 @@ class CommandMeta:
             ]
         }
 
-@dataclass
+
+@dataclass(slots=True)
 class Command:
     callback: callable
     meta: CommandMeta
+
+
+@dataclass(slots=True)
+class Context:
+    payload: dict
+
 
 class InteractionType(IntEnum):
     PING = 1
@@ -45,6 +53,7 @@ class InteractionType(IntEnum):
     MESSAGE_COMPONENT = 3
     APPLICATION_COMMAND_AUTOCOMPLETE = 4
     MODAL_SUBMIT = 5
+
 
 class MessageFlags(IntFlag):
     EPHEMERAL = 1 << 6

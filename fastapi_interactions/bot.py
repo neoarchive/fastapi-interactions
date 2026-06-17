@@ -4,8 +4,6 @@ from .responses import InteractionResponse, MessageResponse
 from fastapi.responses import JSONResponse
 from .models import (
     Command,
-    CommandMeta,
-    Option,
     InteractionType
 )
 from .router import CommandRouter
@@ -19,20 +17,26 @@ class Bot:
             app_id: int,
             public_key: str,
             bot_token: str,
-            interactions_path: str='/interactions'
+            interactions_path: str = '/interactions'
     ):
         self.app_id: int = app_id
-        self.public_key: str  = public_key
+        self.public_key: str = public_key
         self.bot_token: str = bot_token
         self.interactions_path: str = interactions_path
-        self.base_url: str = f'https://discord.com/api/v10/applications/{app_id}' 
+        self.base_url: str = (
+            f'https://discord.com/api/v10/applications/{app_id}'
+        )
         self.commands: dict[str, Command] = {}
 
         self.app = FastAPI()
         self._register_routes()
 
     def _register_routes(self):
-        self.app.add_middleware(VerifySignatureMiddleware, public_key=self.public_key)
+        self.app.add_middleware(
+            VerifySignatureMiddleware,
+            public_key=self.public_key
+        )
+
         @self.app.post(self.interactions_path)
         async def interactions(request: Request):
             payload = json.loads(request.state.raw_body)
@@ -42,7 +46,6 @@ class Bot:
                 return {
                     'type': 1
                 }
-            
             if payload['type'] == InteractionType.APPLICATION_COMMAND:
                 return await self.dispatch(payload)
 
@@ -54,7 +57,6 @@ class Bot:
         for item in self.commands:
             cmd = self.commands[item]
             payload.append(cmd.meta.as_payload())
-        
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Bot {self.bot_token}'
@@ -64,7 +66,6 @@ class Bot:
         r = requests.put(api_url, headers=headers, json=payload)
         print(r.status_code)
         print(r.json())
-
 
     async def dispatch(self, interaction: dict):
         command_name = interaction['data']['name']
@@ -78,11 +79,10 @@ class Bot:
                     "content": "Unknown command"
                 }
             }
-        
         result = await command.callback(interaction)
 
         if isinstance(result, InteractionResponse):
-            return JSONResponse(result.to_dict()) 
+            return JSONResponse(result.to_dict())
 
         return JSONResponse(
             MessageResponse(str(result)).to_dict()
