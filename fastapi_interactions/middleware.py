@@ -31,7 +31,6 @@ class VerifySignatureMiddleware(BaseHTTPMiddleware):
 
         body = await request.body()
         if not verify_key(body, signature, timestamp, self.public_key):
-            print('not verified')
             return JSONResponse(
                 {
                     'detail': 'Invalid signature'
@@ -39,5 +38,6 @@ class VerifySignatureMiddleware(BaseHTTPMiddleware):
                 status_code=401
             )
         else:
+            request.state.raw_body = body
             return await call_next(request)
 

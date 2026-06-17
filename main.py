@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
-from fastapinteractions import Bot 
-from fastapinteractions.responses import (
+from fastapi_interactions import Bot
+from fastapi_interactions.router import CommandRouter, option
+from fastapi_interactions.responses import (
     MessageResponse,
     DeferResponse
 )
@@ -21,20 +22,13 @@ bot = Bot(
     bot_token=BOT_TOKEN
 )
 
-@bot.command(
-    name='access',
-    description='access the server'
-)
-@bot.option(
-    name='password',
-    description='enter the password',
-    required=True,
-    type=3
-)
-async def access(ctx):
-    user = ctx['member']['user']['username']
-    return MessageResponse('whatsup?', ephemeral=True)
+router = CommandRouter()
 
+@router.command(name='echo', description='echo a message')
+@option(name='text', description='Text to echo', required=True)
+async def echo(ctx):
+    return MessageResponse('Hello world!')
 
-# bot.sync_commands() -- only call once during deployment if serverless.
+bot.include_router(router=router)
+bot.sync_commands()
 bot.mount(app)

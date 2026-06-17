@@ -8,6 +8,8 @@ from .models import (
     Option,
     InteractionType
 )
+from .router import CommandRouter
+import json
 import requests
 
 
@@ -24,49 +26,10 @@ class Bot:
         self.bot_token = bot_token
         self.interactions_path = interactions_path
         self.base_url = f'https://discord.com/api/v10/applications/{app_id}' 
-        self.commands = {}
+        self.commands: dict[str, Command] = {}
 
-    def command(
-            self, 
-            name: str,
-            description: str,
-            type: int = 1,
-        ):
-        def decorator(func):
-            
-            meta = getattr(
-                    func, 
-                    "__command_meta__", 
-                    CommandMeta(name=name, description=description, type=type)
-                )
-            meta.name = name
-            meta.description = description
-            meta.type = type
-
-            self.commands[name] = Command(callback=func, meta=meta)
-
-            return func 
-        return decorator
-
-    def option(
-            self,
-            name: str,
-            description: str,
-            type: int = 3,
-            required: bool = True
-        ):
-        def decorator(func):
-            meta = getattr(
-                    func, 
-                    "__command_meta__",
-                    CommandMeta(name="", description="", type=1)
-                )
-            option = Option(name=name, description=description, type=type, required=required)
-            meta.options.append(option)
-            func.__command_meta__ = meta 
-
-            return func 
-        return decorator
+    def include_router(self, router: CommandRouter):
+        self.commands.update(router.commands)
 
     def sync_commands(self):
         payload = []
@@ -111,7 +74,8 @@ class Bot:
         app.add_middleware(VerifySignatureMiddleware, public_key=self.public_key)
         @app.post(self.interactions_path)
         async def interactions(request: Request):
-            payload = await request.json()
+            payload = json.loads(request.state.raw_body)
+            # payload = await request.json()
 
             if payload['type'] == InteractionType.PING:
                 return {
