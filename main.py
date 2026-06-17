@@ -31,10 +31,7 @@ async def access(ctx):
     user = ctx['member']['user']['username']
     return f'We are live {user}'
 
-# @bot.command('foobar', 'test sync')
-# async def foobar(ctx):
-#     return f'Yo synced af'
 
 print(bot.commands)
-bot.sync_commands()
+# bot.sync_commands() -- only call once during deployment if serverless.
 bot.mount(app)
