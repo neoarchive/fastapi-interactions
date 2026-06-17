@@ -21,12 +21,30 @@ class Bot:
             bot_token: str,
             interactions_path: str='/interactions'
     ):
-        self.app_id = app_id
-        self.public_key = public_key
-        self.bot_token = bot_token
-        self.interactions_path = interactions_path
-        self.base_url = f'https://discord.com/api/v10/applications/{app_id}' 
+        self.app_id: int = app_id
+        self.public_key: str  = public_key
+        self.bot_token: str = bot_token
+        self.interactions_path: str = interactions_path
+        self.base_url: str = f'https://discord.com/api/v10/applications/{app_id}' 
         self.commands: dict[str, Command] = {}
+
+        self.app = FastAPI()
+        self._register_routes()
+
+    def _register_routes(self):
+        self.app.add_middleware(VerifySignatureMiddleware, public_key=self.public_key)
+        @self.app.post(self.interactions_path)
+        async def interactions(request: Request):
+            payload = json.loads(request.state.raw_body)
+            # payload = await request.json()
+
+            if payload['type'] == InteractionType.PING:
+                return {
+                    'type': 1
+                }
+            
+            if payload['type'] == InteractionType.APPLICATION_COMMAND:
+                return await self.dispatch(payload)
 
     def include_router(self, router: CommandRouter):
         self.commands.update(router.commands)
@@ -69,18 +87,3 @@ class Bot:
         return JSONResponse(
             MessageResponse(str(result)).to_dict()
         )
-    
-    def mount(self, app: FastAPI):
-        app.add_middleware(VerifySignatureMiddleware, public_key=self.public_key)
-        @app.post(self.interactions_path)
-        async def interactions(request: Request):
-            payload = json.loads(request.state.raw_body)
-            # payload = await request.json()
-
-            if payload['type'] == InteractionType.PING:
-                return {
-                    'type': 1
-                }
-            
-            if payload['type'] == InteractionType.APPLICATION_COMMAND:
-                return await self.dispatch(payload)

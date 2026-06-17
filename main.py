@@ -14,8 +14,6 @@ APP_ID = int(os.getenv('APP_ID'))
 PUBLIC_KEY = str(os.getenv('PUBLIC_KEY'))
 BOT_TOKEN = str(os.getenv('BOT_TOKEN'))
 
-app = FastAPI()
-
 bot = Bot(
     app_id=APP_ID,
     public_key=PUBLIC_KEY,
@@ -31,4 +29,4 @@ async def echo(ctx):
 
 bot.include_router(router=router)
 bot.sync_commands()
-bot.mount(app)
+app = bot.app
