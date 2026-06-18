@@ -16,8 +16,9 @@ router = CommandRouter()
 
 @router.command(name="echo", description="echo a message")
 @option(name="text", description="Text to echo", required=True)
-async def echo(ctx):
-    return MessageResponse("Hello world!")
+async def echo(data):
+    response = data.options[0].value
+    return MessageResponse(response)
 
 
 bot.include_router(router=router)
