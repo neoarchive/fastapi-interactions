@@ -1,5 +1,10 @@
 from dataclasses import dataclass, field
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Optional
 from enum import IntEnum, IntFlag
+
+
+Snowflake = str
 
 
 @dataclass
@@ -14,7 +19,7 @@ class Option:
             "name": self.name,
             "description": self.description,
             "type": self.type,
-            "required": self.required
+            "required": self.required,
         }
 
 
@@ -30,9 +35,7 @@ class CommandMeta:
             "name": self.name,
             "description": self.description,
             "type": self.type,
-            "options": [
-                option.as_payload() for option in self.options
-            ]
+            "options": [option.as_payload() for option in self.options],
         }
 
 
@@ -40,11 +43,6 @@ class CommandMeta:
 class Command:
     callback: callable
     meta: CommandMeta
-
-
-@dataclass(slots=True)
-class Context:
-    payload: dict
 
 
 class InteractionType(IntEnum):
@@ -55,5 +53,59 @@ class InteractionType(IntEnum):
     MODAL_SUBMIT = 5
 
 
+class ApplicationCommandOptionType(IntEnum):
+    SUB_COMMAND = 1
+    SUB_COMMAND_GROUP = 2
+    STRING = 3
+    INTEGER = 4
+    BOOLEAN = 5
+    USER = 6
+    CHANNEL = 7
+    ROLE = 8
+    MENTIONABLE = 9
+    NUMBER = 10
+    ATTACHMENT = 11
+
+
 class MessageFlags(IntFlag):
     EPHEMERAL = 1 << 6
+
+
+class DiscordModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+
+class User(DiscordModel):
+    id: Snowflake
+    username: str
+    descriminator: str
+    global_name: Optional[str] = None
+    avatar: Optional[str] = None
+    bot: Optional[bool] = None
+
+
+class Member(DiscordModel):
+    user: Optional[User] = None
+    nick: Optional[str] = None
+    roles: list[Snowflake] = Field(default_factory=list)
+    permissions: Optional[str] = None
+
+
+class CommandInteractionOption(DiscordModel):
+    name: str
+    type: ApplicationCommandOptionType
+    value: Optional[str | int | float | bool] = None
+    options: list["CommandInteractionOption"] = Field(default_factory=list)
+    focused: Optional[bool] = None
+
+
+CommandInteractionOption.model_rebuild()
+
+
+class ApplicationCommandData(DiscordModel):
+    id: Snowflake
+    name: str
+    type: int
+    guild_id: Optional[Snowflake] = None
+    target_id: Optional[Snowflake] = None
+    options: list[CommandInteractionOption] = Field(default_factory=list)
