@@ -2,9 +2,15 @@ from fastapi import FastAPI, Request
 from .middleware import VerifySignatureMiddleware
 from .responses import InteractionResponse, MessageResponse
 from fastapi.responses import JSONResponse
-from .models import Command, InteractionType, ApplicationCommandData
+from .models import (
+    Command,
+    InteractionType,
+    ApplicationCommandData,
+    Interaction,
+    Context,
+)
 from pydantic import ValidationError
-from .router import CommandRouter
+from .commands import CommandRouter
 import json
 import requests
 
@@ -17,42 +23,72 @@ class Bot:
         bot_token: str,
         interactions_path: str = "/interactions",
     ):
+        """Initialize a bot client
+
+        Args:
+            app_id (int): APP ID Of your discord app
+            public_key (str): PUBLIC KEY of your discord app
+            bot_token (str): BOT TOKEN of your app's bot
+            interactions_path (str, optional): Endpoint to listen for interaction webhooks on. Defaults to "/interactions".
+        """
         self.app_id: int = app_id
         self.public_key: str = public_key
         self.bot_token: str = bot_token
         self.interactions_path: str = interactions_path
-        self.base_url: str = f"https://discord.com/api/v10/applications/{app_id}"
+        self.base_url: str = (
+            f"https://discord.com/api/v10/applications/{app_id}")
         self.commands: dict[str, Command] = {}
 
         self.app = FastAPI()
         self._register_routes()
 
-    def _register_routes(self):
-        self.app.add_middleware(VerifySignatureMiddleware, public_key=self.public_key)
+    def _register_routes(self) -> None:
+        self.app.add_middleware(VerifySignatureMiddleware,
+                                public_key=self.public_key)
 
         @self.app.post(self.interactions_path)
         async def interactions(request: Request):
             payload = json.loads(request.state.raw_body)
-            # payload = await request.json()
 
             if payload["type"] == InteractionType.PING:
                 return {"type": 1}
+
             if payload["type"] == InteractionType.APPLICATION_COMMAND:
+                """ Construct Context """
                 try:
-                    cmd_data = ApplicationCommandData.model_validate(payload["data"])
-                except ValidationError:
-                    return MessageResponse("Unexpected error occurred", ephemeral=True)
+                    interaction = Interaction.model_validate(payload)
+                    application_command = (
+                        ApplicationCommandData
+                        .model_validate(interaction.data)
+                    )
+                except ValidationError as e:
+                    print(e.errors())
+                    response = MessageResponse(
+                        "Unexpected error occurred",
+                        ephemeral=True
+                    )
+                    return JSONResponse(response.to_dict())
 
-                return await self.dispatch(cmd_data)
+                context = Context(
+                    interaction=interaction,
+                    options=application_command)
 
-    def include_router(self, router: CommandRouter):
+                return await self.dispatch(
+                    command_name=application_command.name, ctx=context
+                )
+
+    def attach_router(self, router: CommandRouter) -> None:
+        """Attach a router of commands to the bot
+
+        Args:
+            router (CommandRouter): The router object to include in the bot
+        """
         self.commands.update(router.commands)
 
-    def sync_commands(self):
-        payload = []
-        for item in self.commands:
-            cmd = self.commands[item]
-            payload.append(cmd.meta.as_payload())
+    def sync_commands(self) -> None:
+        payload = [
+             cmd.meta.as_payload() for cmd in self.commands.values()
+        ]
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bot {self.bot_token}",
@@ -60,20 +96,20 @@ class Bot:
 
         api_url = f"{self.base_url}/commands"
         r = requests.put(api_url, headers=headers, json=payload)
-        if r.status_code == 200:
-            print("Commands registered!")
-        else:
-            raise Exception({"error": "registering commands failed", "data": r.json()})
+        if r.status_code != 200:
+            detail = {
+                'error': 'registering commands failed',
+                'data': r.json()
+            }
+            raise Exception(detail)
+        print('Commands registered!')
 
-    async def dispatch(self, data: ApplicationCommandData):
-        command_name = data.name
-
+    async def dispatch(self, command_name: str, ctx: Context) -> JSONResponse:
         command = self.commands.get(command_name)
-
         if command is None:
             return {"type": 4, "data": {"content": "Unknown command"}}
-        result = await command.callback(data)
 
+        result = await command.callback(ctx)
         if isinstance(result, InteractionResponse):
             return JSONResponse(result.to_dict())
 

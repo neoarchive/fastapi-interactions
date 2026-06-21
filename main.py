@@ -1,5 +1,5 @@
 from fastapi_interactions import Bot
-from fastapi_interactions.router import CommandRouter, option
+from fastapi_interactions.commands import CommandRouter, option
 from fastapi_interactions.responses import MessageResponse
 from environs import env
 
@@ -16,11 +16,10 @@ router = CommandRouter()
 
 @router.command(name="echo", description="echo a message")
 @option(name="text", description="Text to echo", required=True)
-async def echo(data):
-    response = data.options[0].value
-    return MessageResponse(response)
+async def echo(ctx):
+    return MessageResponse('works haha')
 
 
 bot.include_router(router=router)
-bot.sync_commands()
+# bot.sync_commands()
 app = bot.app

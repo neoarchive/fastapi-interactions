@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional
+from typing import Optional, Any
 from enum import IntEnum, IntFlag
 
 
@@ -78,7 +78,7 @@ class DiscordModel(BaseModel):
 class User(DiscordModel):
     id: Snowflake
     username: str
-    descriminator: str
+    descriminator: Optional[str] = None
     global_name: Optional[str] = None
     avatar: Optional[str] = None
     bot: Optional[bool] = None
@@ -98,6 +98,14 @@ class CommandInteractionOption(DiscordModel):
     options: list["CommandInteractionOption"] = Field(default_factory=list)
     focused: Optional[bool] = None
 
+    @property
+    def options_by_name(self) -> dict[str, "CommandInteractionOption"]:
+        return {opt.name for opt in self.options}
+
+    def get_option_value(self, name: str, default: Any = None) -> Any:
+        option = self.options_by_name.get(name)
+        return option.value if option is not None else default
+
 
 CommandInteractionOption.model_rebuild()
 
@@ -109,3 +117,54 @@ class ApplicationCommandData(DiscordModel):
     guild_id: Optional[Snowflake] = None
     target_id: Optional[Snowflake] = None
     options: list[CommandInteractionOption] = Field(default_factory=list)
+
+    @property
+    def options_by_name(self) -> dict[str, "CommandInteractionOption"]:
+        return {opt.name: opt for opt in self.options}
+
+    def get_option_value(self, name: str, default: Any = None) -> Any:
+        option = self.options_by_name.get(name)
+        return option.value if option is not None else default
+
+
+class Interaction(DiscordModel):
+    id: Snowflake
+    application_id: Snowflake
+    type: InteractionType
+    token: str
+    version: int
+
+    data: Optional[dict[str, Any]] = None
+
+    guild_id: Optional[Snowflake] = None
+    channel_id: Optional[Snowflake] = None
+    member: Optional[Member] = None
+    user: Optional[User] = None
+    locale: Optional[str] = None
+    guild_locale: Optional[str] = None
+
+
+@dataclass
+class Context:
+    interaction: Interaction
+    options: ApplicationCommandData
+
+    @property
+    def user(self) -> User:
+        if self.interaction.user is not None:
+            return self.interaction.user
+        if (
+            self.interaction.member is not None
+            and self.interaction.member.user is not None
+        ):
+            return self.interaction.member.user
+        raise ValueError(
+            "Interaction does not contain `user` or `member.user`")
+
+    @property
+    def guild_id(self) -> Optional[Snowflake]:
+        return self.interaction.guild_id
+
+    @property
+    def channel_id(self) -> Optional[Snowflake]:
+        return self.interaction.channel_id
