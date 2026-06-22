@@ -26,13 +26,16 @@ class Bot:
         bot_token: str,
         interactions_path: str = "/interactions",
     ):
-        """Initialize a bot client
+        """Initialize a new Discord HTTP webhook bot.
 
         Args:
-            app_id (int): APP ID Of your discord app
-            public_key (str): PUBLIC KEY of your discord app
-            bot_token (str): BOT TOKEN of your app's bot
-            interactions_path (str, optional): Endpoint to listen for interaction webhooks on. Defaults to "/interactions".
+            app_id (int): The Discord Application ID.
+            public_key (str): Public key used to validate incoming webhook signatures
+                from Discord.
+            bot_token (str): Bot token used for authenticated API calls to Discord
+                (command registration, message sending, etc.).
+            interactions_path (str, optional): The route path where the bot listens
+                for interaction webhooks. Defaults to "/interactions".
         """
         self.app_id: int = app_id
         self.public_key: str = public_key
@@ -75,48 +78,91 @@ class Bot:
                 )
 
     def attach_router(self, router: CommandRouter) -> None:
-        """Attach a router of commands to the bot
+        """Attach a CommandRouter to the bot.
+
+        Registers a CommandRouter with this Discord webhook bot, enabling it to
+        handle slash commands, message components, modals, and other interactions
+        defined within the router.
 
         Args:
-            router (CommandRouter): The router object to include in the bot
+            router (CommandRouter): The router instance containing command
+                registrations and handler mappings.
+
+        Raises:
+            TypeError: If the provided router is not an instance of CommandRouter.
         """
         if not isinstance(router, CommandRouter):
             raise TypeError(f"Expected a CommandRouter, got {type(router).__name__!r}")
         self.commands.update(router.commands)
-        router.after_attach()
 
-    def load_extension(self, extension_path: str) -> None:
-        logger.info(f'Loading extension {extension_path!r}')
-        extension = importlib.import_module(extension_path)
+    def __load_routers_from_module(self, module) -> None:
+        routers = getattr(module, "__routers__", None)
 
-        logger.debug(f'Looking for routers defined in {extension_path!r}')
-        routers = getattr(extension, "__routers__", [])
-        if not routers:
-            logger.debug(f'__routers__ unset in {extension_path!r}. searching manually')
+        if routers is None:
             routers = [
-                obj
-                for obj in vars(extension).values()
-                if isinstance(obj, CommandRouter)
+                obj for obj in vars(module).values() if isinstance(obj, CommandRouter)
             ]
 
+        if not routers:
+            logger.warning(f"No routers configured in {module.__name__!r}")
+            return
+
+        logger.debug(f"{len(routers)} routers discovered in {module.__name__!r}")
         for router in routers:
             self.attach_router(router)
 
-    def load_extensions(self, package_name: str) -> None:
-        logger.info(f'Attempting to load extensions from {package_name!r}')
-        package = importlib.import_module(package_name)
-        if not hasattr(package, '__path__'):
-            raise ValueError(
-                f'{package_name!r} is a module not a package. '
-                f'Use load_extension({package_name!r}) to load a single module'
+    def load_extension(self, path: str) -> None:
+        """Load extension(s) from a module or package.
+
+        Dynamically imports the given Python path and registers all `CommandRouter`
+        instances by calling the internal `__load_routers_from_module` method.
+
+        Behavior:
+            - If `path` points to a **module**: Loads routers from that single module.
+            - If `path` points to a **package**: Recursively discovers and loads
+              all non-package modules within it (and its subpackages).
+
+        Args:
+            path (str): Dot-separated import path to a module or package.
+
+        Raises:
+            ModuleNotFoundError: If the module or package does not exist.
+            ImportError: If an error occurs while importing any module.
+
+        Examples:
+            Load a single module:
+            ```python
+            bot.load_extension("my_bot.extensions.moderation")
+            ```
+            Load all modules from a package(recursive):
+            ```python
+            bot.load_extension('my_bot.extensions')
+            ```
+        """
+        module = importlib.import_module(path)
+        if hasattr(module, "__path__"):
+            # This is a package, lets recurisvely find modules
+            logger.info(f"Scanning packages {path!r} for extensions")
+            walked_packages = pkgutil.walk_packages(
+                module.__path__, module.__name__ + "."
             )
-        for _, module_name, _ in pkgutil.walk_packages(
-            package.__path__,
-            package.__name__+"."
-        ):
-            self.load_extension(module_name)
+            for _, module_name, is_package in walked_packages:
+                print(module_name, is_package)
+                if not is_package:
+                    imported = importlib.import_module(module_name)
+                    self.__load_routers_from_module(imported)
+        else:
+            self.__load_routers_from_module(module)
 
     def sync_commands(self) -> None:
+        """Sync all registered commands with Discord's API.
+
+        Sends a bulk overwrite of the bot's slash commands using the Discord
+        Application Commands endpoint.
+
+        Raises:
+            Exception: If the API request fails.
+        """
         payload = [cmd.meta.as_payload() for cmd in self.commands.values()]
         headers = {
             "Content-Type": "application/json",

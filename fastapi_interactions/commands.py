@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from loguru import logger
 
+
 @dataclass
 class CommandOption:
     name: str
@@ -40,20 +41,30 @@ class Command:
 
 
 class CommandRouter:
-    def __init__(self, name: str = 'Unnamed router'):
-        self.name = self.__name__ = name 
+    def __init__(self, name: str = "Unnamed router"):
+        self.name = self.__name__ = name
         self.commands: dict[str, Command] = {}
 
     def after_attach(self):
-        logger.info(f'{self.__name__} attached with commands {list(self.commands.keys())}')
+        logger.info(
+            f"{self.__name__} attached with commands {list(self.commands.keys())}"
+        )
 
     def command(self, name: str, description: str) -> None:
         """
-        Register a slash command with your bot
+        Add a slash command to this router.
+
+        The decorated function is registered as the handler for the command
+        and will be included when the router is attached to the application.
 
         Args:
-            name (str): Name for your command
-            description (str): Description for your command
+            name: Unique command name.
+            description: User-facing command description.
+
+        Example:
+            @router.command("hello", "Say hello")
+            async def hello(ctx):
+                return "Hello!"
         """
 
         def decorator(func):
