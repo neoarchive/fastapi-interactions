@@ -1,48 +1,9 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, Any
 from enum import IntEnum, IntFlag
 
-
 Snowflake = str
-
-
-@dataclass
-class Option:
-    name: str
-    description: str
-    type: int = 3
-    required: bool = True
-
-    def as_payload(self):
-        return {
-            "name": self.name,
-            "description": self.description,
-            "type": self.type,
-            "required": self.required,
-        }
-
-
-@dataclass(slots=True)
-class CommandMeta:
-    name: str
-    description: str
-    options: list[Option] = field(default_factory=list)
-    type: int = 1
-
-    def as_payload(self):
-        return {
-            "name": self.name,
-            "description": self.description,
-            "type": self.type,
-            "options": [option.as_payload() for option in self.options],
-        }
-
-
-@dataclass(slots=True)
-class Command:
-    callback: callable
-    meta: CommandMeta
 
 
 class InteractionType(IntEnum):
@@ -158,8 +119,7 @@ class Context:
             and self.interaction.member.user is not None
         ):
             return self.interaction.member.user
-        raise ValueError(
-            "Interaction does not contain `user` or `member.user`")
+        raise ValueError("Interaction does not contain `user` or `member.user`")
 
     @property
     def guild_id(self) -> Optional[Snowflake]:

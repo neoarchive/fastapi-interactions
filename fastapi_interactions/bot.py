@@ -3,16 +3,19 @@ from .middleware import VerifySignatureMiddleware
 from .responses import InteractionResponse, MessageResponse
 from fastapi.responses import JSONResponse
 from .models import (
-    Command,
     InteractionType,
     ApplicationCommandData,
     Interaction,
     Context,
 )
+from .commands import Command
 from pydantic import ValidationError
 from .commands import CommandRouter
 import json
-import requests
+import httpx
+import importlib
+import pkgutil
+from loguru import logger
 
 
 class Bot:
@@ -35,16 +38,14 @@ class Bot:
         self.public_key: str = public_key
         self.bot_token: str = bot_token
         self.interactions_path: str = interactions_path
-        self.base_url: str = (
-            f"https://discord.com/api/v10/applications/{app_id}")
+        self.base_url: str = f"https://discord.com/api/v10/applications/{app_id}"
         self.commands: dict[str, Command] = {}
 
         self.app = FastAPI()
         self._register_routes()
 
     def _register_routes(self) -> None:
-        self.app.add_middleware(VerifySignatureMiddleware,
-                                public_key=self.public_key)
+        self.app.add_middleware(VerifySignatureMiddleware, public_key=self.public_key)
 
         @self.app.post(self.interactions_path)
         async def interactions(request: Request):
@@ -54,24 +55,20 @@ class Bot:
                 return {"type": 1}
 
             if payload["type"] == InteractionType.APPLICATION_COMMAND:
-                """ Construct Context """
+                """Construct Context"""
                 try:
                     interaction = Interaction.model_validate(payload)
-                    application_command = (
-                        ApplicationCommandData
-                        .model_validate(interaction.data)
+                    application_command = ApplicationCommandData.model_validate(
+                        interaction.data
                     )
                 except ValidationError as e:
                     print(e.errors())
                     response = MessageResponse(
-                        "Unexpected error occurred",
-                        ephemeral=True
+                        "Unexpected error occurred", ephemeral=True
                     )
                     return JSONResponse(response.to_dict())
 
-                context = Context(
-                    interaction=interaction,
-                    options=application_command)
+                context = Context(interaction=interaction, options=application_command)
 
                 return await self.dispatch(
                     command_name=application_command.name, ctx=context
@@ -83,26 +80,55 @@ class Bot:
         Args:
             router (CommandRouter): The router object to include in the bot
         """
+        if not isinstance(router, CommandRouter):
+            raise TypeError(f"Expected a CommandRouter, got {type(router).__name__!r}")
         self.commands.update(router.commands)
+        router.after_attach()
+
+    def load_extension(self, extension_path: str) -> None:
+        logger.info(f'Loading extension {extension_path!r}')
+        extension = importlib.import_module(extension_path)
+
+        logger.debug(f'Looking for routers defined in {extension_path!r}')
+        routers = getattr(extension, "__routers__", [])
+        if not routers:
+            logger.debug(f'__routers__ unset in {extension_path!r}. searching manually')
+            routers = [
+                obj
+                for obj in vars(extension).values()
+                if isinstance(obj, CommandRouter)
+            ]
+
+        for router in routers:
+            self.attach_router(router)
+
+    def load_extensions(self, package_name: str) -> None:
+        logger.info(f'Attempting to load extensions from {package_name!r}')
+        package = importlib.import_module(package_name)
+        if not hasattr(package, '__path__'):
+            raise ValueError(
+                f'{package_name!r} is a module not a package. '
+                f'Use load_extension({package_name!r}) to load a single module'
+            )
+        for _, module_name, _ in pkgutil.walk_packages(
+            package.__path__,
+            package.__name__+"."
+        ):
+            self.load_extension(module_name)
 
     def sync_commands(self) -> None:
-        payload = [
-             cmd.meta.as_payload() for cmd in self.commands.values()
-        ]
+        payload = [cmd.meta.as_payload() for cmd in self.commands.values()]
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bot {self.bot_token}",
         }
 
         api_url = f"{self.base_url}/commands"
-        r = requests.put(api_url, headers=headers, json=payload)
+        r = httpx.put(api_url, headers=headers, json=payload)
         if r.status_code != 200:
-            detail = {
-                'error': 'registering commands failed',
-                'data': r.json()
-            }
+            detail = {"error": "registering commands failed", "data": r.json()}
             raise Exception(detail)
-        print('Commands registered!')
+        print("Commands registered!")
 
     async def dispatch(self, command_name: str, ctx: Context) -> JSONResponse:
         command = self.commands.get(command_name)
