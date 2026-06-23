@@ -49,6 +49,7 @@ class CommandRouter:
         self.name = name or self.__infer_name()
         self.guild_id: Optional[Snowflake] = guild_id
         self.commands: dict[str, Command] = {}
+        logger.debug(f'{self.name} router initialized')
 
     def __infer_name(self) -> str:
         frame = sys._getframe(2)

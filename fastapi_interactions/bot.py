@@ -7,6 +7,7 @@ from .models import (
     ApplicationCommandData,
     Interaction,
     Context,
+    Snowflake,
 )
 from typing import Any
 from .commands import Command
@@ -21,6 +22,23 @@ import inspect
 
 
 async def call_with_options(callback: callable, ctx: Context) -> Any:
+    """Invoke a command callback with option values bound to parameters.
+
+    Inspects the callback's signature and matches each parameter name to a registered
+    option in the interaction context. Values are passed as keyword arguments to the
+    callback. Parameters with default values are optional; missing required parameters
+    raise an error.
+
+    Args:
+        callback: The async command function to invoke.
+        ctx: The interaction context containing option values.
+
+    Returns:
+        The awaited result of the callback invocation.
+
+    Raises:
+        TypeError: If a required parameter has no matching option value in the context.
+    """
     sig = inspect.signature(callback)
     kwargs = {}
 
@@ -117,6 +135,7 @@ class Bot:
         if not isinstance(router, CommandRouter):
             raise TypeError(f"Expected a CommandRouter, got {type(router).__name__!r}")
         self.commands.update(router.commands)
+        logger.info(f"{router.name} attached to bot")
 
     def __load_routers_from_module(self, module) -> None:
         routers = getattr(module, "__routers__", None)
@@ -223,3 +242,28 @@ class Bot:
             return JSONResponse(result.to_dict())
 
         return JSONResponse(MessageResponse(str(result)).to_dict())
+
+    def delete_all__commands(self, guild_id: Snowflake = None) -> None:
+        """
+        Delete all application commands by replacing the command set with an empty list.
+
+        This performs a bulk overwrite operation. If ``guild_id`` is not
+        provided, all global commands are deleted. Otherwise, all commands
+        registered for the specified guild are deleted.
+
+        Parameters
+        ----------
+        guild_id : Snowflake, optional
+            The guild ID to target. If ``None``, the global command scope
+            is used.
+
+        Returns
+        -------
+        None
+        """
+        if not guild_id:
+            url = f"{self.base_url}/commands"
+        else:
+            url = f"{self.base_url}/guilds/{guild_id}/commands"
+
+        self.__put__commands(url, [])
