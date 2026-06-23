@@ -144,6 +144,6 @@ class Context:
     def channel_id(self) -> Optional[Snowflake]:
         return self.interaction.channel_id
 
-    def get_option_value(self, name: str, default: Any = None) -> None:
+    def get_option_value(self, name: str, default: Any = None) -> Any:
         option = self.options.options_by_name.get(name)
         return option.value if option is not None else default
