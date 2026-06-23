@@ -8,6 +8,7 @@ from .models import (
     Interaction,
     Context,
 )
+from typing import Any
 from .commands import Command
 from pydantic import ValidationError
 from .commands import CommandRouter
@@ -16,6 +17,28 @@ import httpx
 import importlib
 import pkgutil
 from loguru import logger
+import inspect
+
+
+async def call_with_options(callback: callable, ctx: Context) -> Any:
+    sig = inspect.signature(callback)
+    kwargs = {}
+
+    params = list(sig.parameters.values())[1:]
+    for param in params:
+        value = ctx.get_option_value(param.name)
+
+        if value is not None:
+            kwargs[param.name] = value
+        elif param.default is not inspect.Parameter.empty:
+            kwargs[param.name] = param.default
+        else:
+            raise TypeError(
+                f'Command {callback.__name__!r} has required parameter '
+                f'{param.name!r} but no matching option was provided'
+            )
+
+    return await callback(ctx, **kwargs)
 
 
 class Bot:
@@ -193,7 +216,7 @@ class Bot:
         if command is None:
             return {"type": 4, "data": {"content": "Unknown command"}}
 
-        result = await command.callback(ctx)
+        result = await call_with_options(command.callback, ctx)
         if isinstance(result, InteractionResponse):
             return JSONResponse(result.to_dict())
 
