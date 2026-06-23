@@ -4,6 +4,7 @@ from .models import Snowflake
 from typing import Optional
 import sys
 
+
 @dataclass
 class CommandOption:
     name: str
@@ -51,7 +52,7 @@ class CommandRouter:
 
     def __infer_name(self) -> str:
         frame = sys._getframe(2)
-        return frame.f_globals.get('__name__', "Unknown")
+        return frame.f_globals.get("__name__", "Unknown")
 
     def after_attach(self):
         logger.info(
@@ -83,14 +84,16 @@ class CommandRouter:
             )
             meta.name = name
             meta.description = description
-            self.commands[name] = Command(callback=func, meta=meta, guild_id=self.guild_id)
+            self.commands[name] = Command(
+                callback=func, meta=meta, guild_id=self.guild_id
+            )
             func.__dict__.pop("__command_meta__", None)
             return func
 
         return decorator
 
 
-def option(name: str, description: str, type: int = 3, required: bool = True) -> None:
+def option(name: str, description: str, type: int = 3, required: bool = False) -> None:
     """
     Create an option with your slash command
 
@@ -124,4 +127,3 @@ def option(name: str, description: str, type: int = 3, required: bool = True) ->
         return func
 
     return decorator
-

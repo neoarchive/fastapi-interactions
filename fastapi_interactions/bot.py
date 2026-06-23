@@ -34,8 +34,8 @@ async def call_with_options(callback: callable, ctx: Context) -> Any:
             kwargs[param.name] = param.default
         else:
             raise TypeError(
-                f'Command {callback.__name__!r} has required parameter '
-                f'{param.name!r} but no matching option was provided'
+                f"Command {callback.__name__!r} has required parameter "
+                f"{param.name!r} but no matching option was provided"
             )
 
     return await callback(ctx, **kwargs)
@@ -191,25 +191,27 @@ class Bot:
 
         for command in self.commands.values():
             if command.guild_id is not None:
-                guild_payloads.setdefault(command.guild_id, []).append(command.meta.as_payload())
+                guild_payloads.setdefault(command.guild_id, []).append(
+                    command.meta.as_payload()
+                )
             else:
                 global_payloads.append(command.meta.as_payload())
 
         if global_payloads:
-            self.__put__commands(f'{self.base_url}/commands', global_payloads)
+            self.__put__commands(f"{self.base_url}/commands", global_payloads)
 
         for guild_id, payload in guild_payloads.items():
-            self.__put__commands(f'{self.base_url}/guilds/{guild_id}/commands', payload)
+            self.__put__commands(f"{self.base_url}/guilds/{guild_id}/commands", payload)
 
     def __put__commands(self, url: str, payload: list) -> None:
-        headers = {
-            'Authorization': f'Bot {self.bot_token}'
-        }
+        headers = {"Authorization": f"Bot {self.bot_token}"}
         with httpx.Client() as client:
             response = client.put(url, headers=headers, json=payload)
         if response.status_code != 200:
-            raise Exception({"error": "registering commands failed", "data": response.json()})
-        logger.info(f'Synced {len(payload)} commands to {url!r}')
+            raise Exception(
+                {"error": "registering commands failed", "data": response.json()}
+            )
+        logger.info(f"Synced {len(payload)} commands to {url!r}")
 
     async def dispatch(self, command_name: str, ctx: Context) -> JSONResponse:
         command = self.commands.get(command_name)

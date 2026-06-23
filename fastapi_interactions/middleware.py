@@ -5,11 +5,12 @@ from nacl.signing import VerifyKey
 from nacl.exceptions import BadSignatureError
 
 
-def verify_signature(public_key: str, signature: str, timestamp: str, body: bytes) -> bool:
+def verify_signature(
+    public_key: str, signature: str, timestamp: str, body: bytes
+) -> bool:
     try:
         VerifyKey(bytes.fromhex(public_key)).verify(
-            timestamp.encode() + body,
-            bytes.fromhex(signature)
+            timestamp.encode() + body, bytes.fromhex(signature)
         )
         return True
     except (BadSignatureError, ValueError):
@@ -36,7 +37,7 @@ class VerifySignatureMiddleware(BaseHTTPMiddleware):
             public_key=self.public_key,
             signature=signature,
             timestamp=timestamp,
-            body=body
+            body=body,
         )
         if not verified_signature:
             return JSONResponse({"detail": "Invalid signature"}, status_code=401)
