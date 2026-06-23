@@ -163,18 +163,30 @@ class Bot:
         Raises:
             Exception: If the API request fails.
         """
-        payload = [cmd.meta.as_payload() for cmd in self.commands.values()]
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bot {self.bot_token}",
-        }
+        global_payloads = []
+        guild_payloads: dict[int, list] = {}
 
-        api_url = f"{self.base_url}/commands"
-        r = httpx.put(api_url, headers=headers, json=payload)
-        if r.status_code != 200:
-            detail = {"error": "registering commands failed", "data": r.json()}
-            raise Exception(detail)
-        print("Commands registered!")
+        for command in self.commands.values():
+            if command.guild_id is not None:
+                guild_payloads.setdefault(command.guild_id, []).append(command.meta.as_payload())
+            else:
+                global_payloads.append(command.meta.as_payload())
+
+        if global_payloads:
+            self.__put__commands(f'{self.base_url}/commands', global_payloads)
+
+        for guild_id, payload in guild_payloads.items():
+            self.__put__commands(f'{self.base_url}/guilds/{guild_id}/commands', payload)
+
+    def __put__commands(self, url: str, payload: list) -> None:
+        headers = {
+            'Authorization': f'Bot {self.bot_token}'
+        }
+        with httpx.Client() as client:
+            response = client.put(url, headers=headers, json=payload)
+        if response.status_code != 200:
+            raise Exception({"error": "registering commands failed", "data": response.json()})
+        logger.info(f'Synced {len(payload)} commands to {url!r}')
 
     async def dispatch(self, command_name: str, ctx: Context) -> JSONResponse:
         command = self.commands.get(command_name)

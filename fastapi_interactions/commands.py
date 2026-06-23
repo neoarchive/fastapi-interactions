@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from loguru import logger
-
+from .models import Snowflake
+from typing import Optional
 
 @dataclass
 class CommandOption:
@@ -38,11 +39,14 @@ class CommandMeta:
 class Command:
     callback: callable
     meta: CommandMeta
+    guild_id: Optional[Snowflake] = None
 
 
 class CommandRouter:
-    def __init__(self, name: str = "Unnamed router"):
-        self.name = self.__name__ = name
+    def __init__(self, name: str = "Unnamed router", guild_id: Optional[Snowflake] = None):
+        self.name: str = name
+        self.__name__: str = self.name
+        self.guild_id: Optional[Snowflake] = guild_id
         self.commands: dict[str, Command] = {}
 
     def after_attach(self):
@@ -73,7 +77,7 @@ class CommandRouter:
             )
             meta.name = name
             meta.description = description
-            self.commands[name] = Command(callback=func, meta=meta)
+            self.commands[name] = Command(callback=func, meta=meta, guild_id=self.guild_id)
             func.__dict__.pop("__command_meta__", None)
             return func
 
