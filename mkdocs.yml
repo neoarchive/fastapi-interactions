@@ -1,0 +1,55 @@
+site_name: FastAPI Interactions
+site_description: A lightweight Discord interactions webhook framework built on FastAPI.
+repo_url: https://github.com/neoarchive/fastapi-interactions
+repo_name: fastapi-interactions
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: purple
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            show_symbol_type_heading: true
+            show_signature_annotations: true
+            separate_signature: true
+            docstring_style: google
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - admonition
+  - pymdownx.details
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: guide/installation.md
+    - Quickstart: guide/quickstart.md
+    - Deploying to Vercel: guide/vercel.md
+  - Guide:
+    - Commands: guide/commands.md
+    - Responses: guide/responses.md
+    - Context: guide/context.md
+  - Examples:
+    - First bot: examples/first_bot.md 
+  - API Reference:
+    - Bot: api/bot.md
+    - Commands: api/commands.md
+    - Responses: api/responses.md
+    - Models: api/models.md
+    - Middleware: api/middleware.md
