@@ -3,6 +3,7 @@ from loguru import logger
 from .models import Snowflake
 from typing import Optional
 
+
 @dataclass
 class CommandOption:
     name: str
@@ -43,9 +44,7 @@ class Command:
 
 
 class CommandRouter:
-    def __init__(self, name: str = "Unnamed router", guild_id: Optional[Snowflake] = None):
-        self.name: str = name
-        self.__name__: str = self.name
+    def __init__(self, guild_id: Optional[Snowflake] = None):
         self.guild_id: Optional[Snowflake] = guild_id
         self.commands: dict[str, Command] = {}
 
@@ -66,9 +65,11 @@ class CommandRouter:
             description: User-facing command description.
 
         Example:
+            ```python
             @router.command("hello", "Say hello")
             async def hello(ctx):
                 return "Hello!"
+            ```
         """
 
         def decorator(func):
@@ -93,6 +94,14 @@ def option(name: str, description: str, type: int = 3, required: bool = True) ->
         description (str): help description for the option field
         type (int, optional): option type. Defaults to 3.
         required (bool, optional): if option is required. Defaults to True.
+
+    Example:
+        ```python
+        @router.command("echo", "Echo a string back")
+        @option(name="phrase", description="Echo phrase", required=True)
+        async def echo(ctx):
+            return ctx.get_option_value(phrase)
+        ```
     """
 
     def decorator(func):
