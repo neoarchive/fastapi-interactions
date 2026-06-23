@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from loguru import logger
 from .models import Snowflake
 from typing import Optional
-
+import sys
 
 @dataclass
 class CommandOption:
@@ -44,9 +44,14 @@ class Command:
 
 
 class CommandRouter:
-    def __init__(self, guild_id: Optional[Snowflake] = None):
+    def __init__(self, name: str = None, guild_id: Optional[Snowflake] = None):
+        self.name = name or self.__infer_name()
         self.guild_id: Optional[Snowflake] = guild_id
         self.commands: dict[str, Command] = {}
+
+    def __infer_name(self) -> str:
+        frame = sys._getframe(2)
+        return frame.f_globals.get('__name__', "Unknown")
 
     def after_attach(self):
         logger.info(
@@ -119,3 +124,4 @@ def option(name: str, description: str, type: int = 3, required: bool = True) ->
         return func
 
     return decorator
+
