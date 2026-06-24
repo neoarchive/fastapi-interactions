@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 from enum import IntFlag
+import asyncio
 
 
 class MessageFlags(IntFlag):
@@ -34,24 +35,38 @@ class MessageResponse(InteractionResponse):
     content: str
     ephemeral: bool = False
 
+    def __init__(self, content: str, ephemeral: bool = False):
+        self.content = content
+        self.flags = MessageFlags.EPHEMERAL if ephemeral else MessageFlags(0)
+
+    def to_payload(self):
+        return {
+            'content': self.content,
+            'flags': int(self.flags)
+        }
+
     def to_dict(self):
-        data = {"content": self.content}
+        return {"type": 4, "data": self.to_payload()}
 
-        if self.ephemeral:
-            data["flags"] = MessageFlags.EPHEMERAL
-
-        return {"type": 4, "data": data}
+    async def __call__(self):
+        return self.to_dict()
 
 
 @dataclass(slots=True)
 class DeferResponse(InteractionResponse):
     ephemeral: bool = False
 
+    def __init__(self, ephemeral: bool = False, finish: callable = None):
+        self.flags = MessageFlags.EPHEMERAL if ephemeral else MessageFlags(0)
+        self.finish = finish
+
     def to_dict(self):
+        return {
+            "type": 5,
+            "data": {"flags": int(self.flags)}
+        }
 
-        payload = {"type": 5}
-
-        if self.ephemeral:
-            payload["data"] = {"flags": MessageFlags.EPHEMERAL}
-
-        return payload
+    async def __call__(self):
+        if self.finish:
+            asyncio.create_task(self.finish())
+        return self.to_dict()

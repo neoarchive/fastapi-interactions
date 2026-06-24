@@ -85,6 +85,8 @@ class Bot:
         self.base_url: str = f"https://discord.com/api/v10/applications/{app_id}"
         self.commands: dict[str, Command] = {}
 
+        self.http = httpx.AsyncClient()
+
         self.app = FastAPI()
         self._register_routes()
 
@@ -112,7 +114,7 @@ class Bot:
                     )
                     return JSONResponse(response.to_dict())
 
-                context = Context(interaction=interaction, options=application_command)
+                context = Context(interaction=interaction, options=application_command, http=self.http)
 
                 return await self.dispatch(
                     command_name=application_command.name, ctx=context
@@ -238,10 +240,12 @@ class Bot:
             return {"type": 4, "data": {"content": "Unknown command"}}
 
         result = await call_with_options(command.callback, ctx)
-        if isinstance(result, InteractionResponse):
-            return JSONResponse(result.to_dict())
 
-        return JSONResponse(MessageResponse(str(result)).to_dict())
+        if not isinstance(result, InteractionResponse):
+            result = MessageResponse(str(result))
+
+        return JSONResponse(await result())
+
 
     def delete_all__commands(self, guild_id: Snowflake = None) -> None:
         """

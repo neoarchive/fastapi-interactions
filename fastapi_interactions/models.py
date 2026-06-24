@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+from .responses import MessageResponse
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, Any
 from enum import IntEnum
+import httpx
 
 Snowflake = str
 
@@ -105,6 +107,7 @@ class Interaction(DiscordModel):
 class Context:
     interaction: Interaction
     options: ApplicationCommandData
+    http: httpx.AsyncClient
 
     @property
     def user(self) -> User:
@@ -124,6 +127,17 @@ class Context:
     @property
     def channel_id(self) -> Optional[Snowflake]:
         return self.interaction.channel_id
+
+    @property
+    def _webhook_base(self) -> str:
+        return f"https://discord.com/api/v10/webhooks/{self.interaction.application_id}/{self.interaction.token}"
+
+    async def send(self, content: str, ephemeral: bool = False) -> None:
+        message = MessageResponse(content, ephemeral=ephemeral)
+        await self.http.post(
+            url=self._webhook_base,
+            json=message.to_payload()
+        )
 
     def get_option_value(self, name: str, default: Any = None) -> Any:
         option = self.options.options_by_name.get(name)
