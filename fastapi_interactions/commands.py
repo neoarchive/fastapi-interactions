@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from loguru import logger
 from .models import Snowflake
 from typing import Optional
 import sys
@@ -49,16 +48,16 @@ class CommandRouter:
         self.name = name or self.__infer_name()
         self.guild_id: Optional[Snowflake] = guild_id
         self.commands: dict[str, Command] = {}
-        logger.debug(f'{self.name} router initialized')
 
     def __infer_name(self) -> str:
         frame = sys._getframe(2)
         return frame.f_globals.get("__name__", "Unknown")
 
-    def after_attach(self):
-        logger.info(
-            f"{self.__name__} attached with commands {list(self.commands.keys())}"
-        )
+    def __len__(self) -> int:
+        return len(list(self.commands.keys()))
+
+    def __str__(self) -> str:
+        return f'{list(self.commands.keys())}'
 
     def command(self, name: str, description: str) -> None:
         """
