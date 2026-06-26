@@ -1,6 +1,10 @@
 from fastapi import FastAPI, Request
 from .middleware import VerifySignatureMiddleware
-from .responses import InteractionResponse, MessageResponse
+from .responses import (
+    InteractionResponse,
+    PongResponse,
+    MessageResponse
+)
 from fastapi.responses import JSONResponse
 from .models import (
     InteractionType,
@@ -98,7 +102,7 @@ class Bot:
             payload = json.loads(request.state.raw_body)
 
             if payload["type"] == InteractionType.PING:
-                return {"type": 1}
+                return await PongResponse()
 
             if payload["type"] == InteractionType.APPLICATION_COMMAND:
                 """Construct Context"""
@@ -107,12 +111,9 @@ class Bot:
                     application_command = ApplicationCommandData.model_validate(
                         interaction.data
                     )
-                except ValidationError as e:
-                    print(e.errors())
-                    response = MessageResponse(
-                        "Unexpected error occurred", ephemeral=True
-                    )
-                    return JSONResponse(response.to_dict())
+                except (ValidationError, Exception):
+                    # print(e.errors())
+                    return await MessageResponse('Unexpected error', ephemeral=True)
 
                 context = Context(interaction=interaction, options=application_command, http=self.http)
 
@@ -137,7 +138,7 @@ class Bot:
         if not isinstance(router, CommandRouter):
             raise TypeError(f"Expected a CommandRouter, got {type(router).__name__!r}")
         self.commands.update(router.commands)
-        logger.info(f"{router.name} attached to bot")
+        logger.info(f"Router {router.name!r} attached with {len(router)} commands - {str(router)}")
 
     def __load_routers_from_module(self, module) -> None:
         routers = getattr(module, "__routers__", None)
@@ -237,17 +238,16 @@ class Bot:
     async def dispatch(self, command_name: str, ctx: Context) -> JSONResponse:
         command = self.commands.get(command_name)
         if command is None:
-            return {"type": 4, "data": {"content": "Unknown command"}}
+            return await MessageResponse('Unknown command', ephemeral=True)
 
         result = await call_with_options(command.callback, ctx)
 
         if not isinstance(result, InteractionResponse):
             result = MessageResponse(str(result))
 
-        return JSONResponse(await result())
+        return await result
 
-
-    def delete_all__commands(self, guild_id: Snowflake = None) -> None:
+    def delete_all_commands(self, guild_id: Snowflake = None) -> None:
         """
         Delete all application commands by replacing the command set with an empty list.
 
