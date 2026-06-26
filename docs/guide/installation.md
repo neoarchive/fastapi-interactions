@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.13+
 - A Discord application with an interactions endpoint URL configured in the [Developer Portal](https://discord.com/developers/applications)
 
 ## Install
@@ -15,11 +15,10 @@ This pulls in FastAPI, Starlette, httpx, pydantic, and PyNaCl as dependencies. N
 
 ## Running locally
 
-For local development you'll need an ASGI server:
+For local development you can take advantage of the fastapi cli
 
 ```bash
-pip install uvicorn
-uvicorn main:app --reload
+fastapi dev myapp.py
 ```
 
 Discord requires a publicly reachable HTTPS URL to deliver interaction webhooks. For local development, [ngrok](https://ngrok.com) or [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) are both straightforward options:

@@ -37,10 +37,10 @@ async def ping(ctx):
 
 @router.command(name="echo", description="Echo a message back")
 @router.option(name="text", description="The text to echo", required=True)
-async def echo(ctx):
-    return ctx.options.get_option_value("text")
+async def echo(ctx, text: str):
+    return text
 
-bot.include_router(router)
+bot.attach_router(router)
 
 app = bot.app
 ```

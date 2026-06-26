@@ -1,87 +1,73 @@
 # Quickstart
 
-## Project layout
+Get your first Discord bot running in 5 minutes.
 
-```
-my-bot/
-├── main.py
-├── sync_commands.py
-└── commands/
-    ├── __init__.py
-    └── general.py
+## 1. Install
+
+```bash
+pip install fastapi-interactions environs
 ```
 
-## 1. Create your bot
+## 2. Create your bot
+
+Create `main.py`:
 
 ```python
-# main.py
 from fastapi_interactions import Bot
+from fastapi_interactions.commands import CommandRouter, option
+from environs import env
 
-bot = Bot(
-    app_id=123456789,           # your Discord application ID
-    public_key="your_public_key",   # from the Developer Portal
-    bot_token="Bot your_token",
-)
+env.read_env()
 
-bot.load_commands("commands")
+DISCORD_APP_ID = env.int("DISCORD_APP_ID")
+DISCORD_PUBLIC_KEY = env.str("DISCORD_PUBLIC_KEY")
+DISCORD_BOT_TOKEN = env.str("DISCORD_BOT_TOKEN")
 
-app = bot.app   # expose the FastAPI instance for your ASGI server
-```
-
-`app` is a plain FastAPI instance. Anything that can serve a FastAPI app — uvicorn locally, Vercel in production — works without any extra configuration.
-
-## 2. Write your commands
-
-Commands live in a package (here, `commands/`). Each module defines a `CommandRouter` and decorates functions against it.
-
-```python
-# commands/general.py
-from fastapi_interactions import CommandRouter
+bot = Bot(app_id=DISCORD_APP_ID, public_key=DISCORD_PUBLIC_KEY, bot_token=DISCORD_BOT_TOKEN)
 
 router = CommandRouter()
 
-@router.command(name="ping", description="Check bot latency")
-async def ping(ctx):
-    return "Pong!"
+@router.command(name="hello", description="Say hello")
+async def hello(ctx):
+    return f"Hello, {ctx.user.username}!"
 
-@router.command(name="echo", description="Echo a message back")
-@router.option(name="text", description="The text to echo", required=True)
-async def echo(ctx, text: str = "Default value"):
-    return f"Your echo is {text!r}"
+@router.command(name="echo", description="Echo a message")
+@router.option(name="text", description="Text to echo", required=True)
+async def echo(ctx, text: str):
+    return f"You said: {text}"
+
+bot.include_router(router)
+bot.sync_commands() - # Call the script directly `python main.py` once to sync commands and then comment this line out. 
+app = bot.app
+
 ```
 
-Returning a plain string sends a normal message response. See [Responses](responses.md) for richer reply types.
+## 3. Set up environment variables
 
-## 3. Sync commands to Discord
+Create `.env`:
 
-Command registration is separate from your app — run it once when deploying, not on every startup.
-
-```python
-# sync_commands.py
-from fastapi_interactions import Bot
-
-bot = Bot(
-    app_id=123456789,
-    public_key="your_public_key",
-    bot_token="Bot your_token",
-)
-
-bot.load_commands("commands")
-bot.sync_commands()
 ```
+DISCORD_APP_ID=123456789
+DISCORD_PUBLIC_KEY=your_public_key_here
+DISCORD_BOT_TOKEN=Bot your_bot_token_here
+```
+
+Find these in the [Discord Developer Portal](https://discord.com/developers/applications).
+
+## 4. Run locally
 
 ```bash
-python sync_commands.py
-# Commands registered!
+fastapi dev main.py
 ```
 
-!!! note
-    Global command registration can take up to an hour to propagate to all Discord clients. During development, consider [guild-scoped commands](commands.md#guild-commands) for instant updates.
+Your bot is now listening on `http://localhost:8000/interactions`.
 
-## 4. Run
+## 5. Make it reachable to Discord
+
+Discord needs a public HTTPS URL to send interactions to. Use [ngrok](https://ngrok.com) for local development:
 
 ```bash
-uvicorn main:app --reload
+ngrok http 8000
 ```
 
-Your bot's interactions endpoint is now live at `http://localhost:8000/interactions`.
+Copy the `https://` URL and paste it into your Discord application's **Interactions Endpoint URL** field (in Developer Portal → Your App → General Information), appending `/interactions`:

@@ -45,6 +45,7 @@ nav:
     - Commands: guide/commands.md
     - Responses: guide/responses.md
     - Context: guide/context.md
+    - Extensions: guide/extensions.md
   - Examples:
     - First bot: examples/first_bot.md 
   - API Reference:

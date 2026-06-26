@@ -1,11 +1,13 @@
 # Commands
 
+Commands are the core of your Discord bot — they're the slash commands users see and invoke.
+
 ## Defining a command
 
-Commands are defined using a `CommandRouter`. Each module in your commands package creates its own router and decorates functions against it.
+Use a `CommandRouter` and the `@command` decorator:
 
 ```python
-from fastapi_interactions import CommandRouter
+from fastapi_interactions.commands import CommandRouter
 
 router = CommandRouter()
 
@@ -14,7 +16,9 @@ async def ping(ctx):
     return "Pong!"
 ```
 
-`bot.load_extension("commands")` discovers and registers all routers automatically. You can also register a router directly:
+Every command is an async function that receives a `Context` object (`ctx`) as its first parameter. The context provides access to the invoking user, the guild/channel where the command was invoked, and the options they supplied.
+
+Register the router with your bot:
 
 ```python
 bot.attach_router(router)
@@ -22,159 +26,117 @@ bot.attach_router(router)
 
 ## Adding options
 
-Options are the parameters a user fills in when invoking a slash command. Decorate below `@router.command`:
-
-```python
-@router.command(name="echo", description="Echo a message back")
-@router.option(name="text", description="The text to echo", required=True)
-async def echo(ctx, text: str):
-    return f"Your phrase is {text!r}"
-```
-
-Option values are automatically bound to matching parameters in your function signature. The dispatcher inspects the callback's parameters and fills in values from the interaction data — no manual lookups needed.
-
-!!! note "Decorator order"
-    `@router.option` must appear **below** `@router.command`. Python executes decorators bottom-up, so options are attached to the function before the command decorator reads them.
-
-### Multiple options
+Options are the parameters users fill in when invoking a command. Use the `@option` decorator:
 
 ```python
 @router.command(name="greet", description="Greet someone")
 @router.option(name="name", description="Who to greet", required=True)
-@router.option(name="greeting", description="Custom greeting", required=False)
-async def greet(ctx, name: str, greeting: str = "Hello"):
-    return f"{greeting}, {name}!"
+async def greet(ctx, name: str):
+    return f"Hello, {name}!"
 ```
 
-Parameter names must match registered option names exactly. Discord rejects command registrations where optional options appear before required ones.
+The parameter name in your function (`name: str`) must match the option name you register (`name="name"`). This is how the framework automatically binds option values to function parameters.
+
+### Multiple options
+
+```python
+@router.command(name="calculate", description="Add two numbers")
+@router.option(name="a", description="First number", type=4, required=True)
+@router.option(name="b", description="Second number", type=4, required=True)
+async def calculate(ctx, a: int, b: int):
+    return f"{a} + {b} = {a + b}"
+```
+
+Option values are passed directly to your function as keyword arguments. No manual lookups needed.
+
+### Optional options
+
+Use Python's default parameter syntax:
+
+```python
+@router.command(name="search", description="Search for something")
+@router.option(name="query", description="What to search for", required=True)
+@router.option(name="limit", description="Result limit", type=4, required=False)
+async def search(ctx, query: str, limit: int = 10):
+    return f"Searching for {query!r} (limit: {limit})"
+```
+
+Required options must be declared before optional ones. Discord rejects command registrations that violate this ordering.
 
 ### Option types
 
-The `type` parameter maps to Discord's [application command option types](https://discord.com/developers/docs/interactions/application-commands#application-command-object-application-command-option-type).
+The `type` parameter specifies what kind of value the option accepts:
 
-| Type value | Discord type | Python value |
+| Type | Value | Python type |
 |---|---|---|
-| `3` (default) | `STRING` | `str` |
-| `4` | `INTEGER` | `int` |
-| `10` | `NUMBER` | `float` |
-| `5` | `BOOLEAN` | `bool` |
-| `6` | `USER` | snowflake `str` |
-| `7` | `CHANNEL` | snowflake `str` |
-| `8` | `ROLE` | snowflake `str` |
+| STRING | 3 (default) | `str` |
+| INTEGER | 4 | `int` |
+| NUMBER | 10 | `float` |
+| BOOLEAN | 5 | `bool` |
+| USER | 6 | `str` (snowflake) |
+| CHANNEL | 7 | `str` (snowflake) |
+| ROLE | 8 | `str` (snowflake) |
 
 ```python
-@router.option(name="count", description="How many times", type=4, required=True)
-async def repeat(ctx, count: int):
-    return f"Repeating {count} times."
+@router.option(name="count", description="How many", type=4, required=True)
+@router.option(name="enabled", description="Enable it", type=5, required=True)
+async def configure(ctx, count: int, enabled: bool):
+    return f"Count: {count}, Enabled: {enabled}"
 ```
 
-## Reading option values programmatically
+## Accessing context
 
-Most of the time, you access options through the function signature. For dynamic lookups — checking which options were actually provided, reading nested subcommand options — use `ctx.get_option_value()`:
+The `ctx` parameter gives you information about the interaction:
+
+```python
+@router.command(name="whoami", description="Who are you")
+async def whoami(ctx):
+    user = ctx.user.username
+    guild = ctx.guild_id or "DM"
+    channel = ctx.channel_id or "N/A"
+    return f"You're {user} in {guild}:{channel}"
+```
+
+**`ctx.user`** — The user who invoked the command (always available).
+
+**`ctx.guild_id`** — The ID of the guild, or `None` if invoked in a DM.
+
+**`ctx.channel_id`** — The ID of the channel where the command was invoked.
+
+**`ctx.get_option_value(name, default=None)`** — Look up an option value by name. Used for dynamic lookups when you need to check if an optional option was provided:
 
 ```python
 @router.command(name="config", description="Configure settings")
-@router.option(name="setting", description="Which setting", required=True)
-@router.option(name="value", description="New value", required=False)
+@router.option(name="setting", description="Setting name", required=True)
+@router.option(name="value", description="Setting value", required=False)
 async def config(ctx, setting: str):
     value = ctx.get_option_value("value")
     if value is None:
-        return f"Current value for {setting}: (not set)"
+        return f"Current {setting}: (not set)"
     return f"Set {setting} to {value}"
 ```
 
-`ctx.get_option_value()` returns `None` if the option wasn't provided. Pass a `default` to use a fallback:
-
-```python
-count = ctx.get_option_value("count", default=1)
-```
-
-## Returning a response
+## Returning responses
 
 The simplest response is a plain string:
 
 ```python
-async def ping(ctx):
-    return "Pong!"
+@router.command(name="hello", description="Say hello")
+async def hello(ctx):
+    return "Hello!"
 ```
 
-For more control, return a response object directly. See [Responses](responses.md).
+For more control, return a response object. See [Responses](responses.md) for the full reference.
 
-## Command loading
+## Decorator order
 
-`bot.load_extension("commands")` walks the given package and merges every module's routers into the bot's command registry:
+Decorators stack bottom-up. Make sure `@option` appears **below** `@command`:
 
 ```python
-bot.load_extension("commands")
+@router.command(name="echo", description="Echo text")
+@router.option(name="text", description="Text to echo", required=True)
+async def echo(ctx, text: str):
+    return text
 ```
 
-Each module can expose routers in two ways.
-
-### Explicit registration
-
-Define a `__routers__` list at module level containing the routers you want to register:
-
-```python
-# commands/general.py
-from fastapi_interactions import CommandRouter
-
-router1 = CommandRouter(name="ping")
-router2 = CommandRouter(name="echo")
-
-__routers__ = [router1, router2]
-
-@router1.command(...)
-async def some_command(ctx): ...
-```
-
-### Automatic discovery
-
-If `__routers__` is not defined, `load_extension` scans the module for all `CommandRouter` instances and registers them automatically:
-
-```python
-# commands/general.py
-from fastapi_interactions import CommandRouter
-
-router = CommandRouter()
-
-@router.command(...)
-async def some_command(ctx): ...
-```
-
-The router is discovered and registered without needing an explicit `__routers__` list.
-
-You can also load a single module directly:
-
-```python
-bot.load_extension("commands.admin")
-```
-
-If a module contains no routers and no `__routers__` attribute, a warning is logged and the module is skipped.
-
-## Guild commands
-
-Commands can be scoped to a specific guild for instant propagation during development. Global commands can take up to an hour to appear everywhere, making guild-scoped commands ideal for testing.
-
-Pass a `guild_id` when creating the router:
-
-```python
-from fastapi_interactions import CommandRouter
-
-dev_router = CommandRouter(guild_id="123456789")
-
-@dev_router.command(name="test", description="A test command")
-async def test(ctx):
-    return "This command only exists in the test server."
-```
-
-Guild-scoped commands appear immediately in the specified server. When ready for production, create a separate router without a `guild_id`:
-
-```python
-prod_router = CommandRouter()
-
-@prod_router.command(name="test", description="A test command")
-async def test(ctx):
-    return "This command is global."
-```
-
-Both routers can coexist — `bot.include_router(dev_router)` and `bot.include_router(prod_router)` will register commands to both their respective scopes. When syncing with `bot.sync_commands()`, guild-scoped commands are PUT to the guild endpoint, and global commands to the global endpoint.
+If you put `@command` on the bottom, the decorators run in the wrong order and your options won't be attached.
