@@ -2,6 +2,32 @@ from dataclasses import dataclass
 from abc import ABC, abstractmethod
 from enum import IntFlag
 import asyncio
+from enum import IntEnum
+
+
+class InteractionCallbackType(IntEnum):
+    PONG = 1
+    CHANNEL_MESSAGE_WITH_SOURCE = 4
+    DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE = 5
+    DEFERRED_UPDATE_MESSAGE = 6
+    UPDATE_MESSAGE = 7
+    APPLICATION_COMMAND_AUTOCOMPLETE_RESULT = 8
+    MODAL = 9
+    PREMIUM_REQUIRED = 10
+    LAUNCH_ACTIVITY = 12
+
+    """
+    redefigning for ease of life
+    aliases arent used because type checkers are annoying
+    """
+    # MESSAGE = 4
+    # DEFER = 5
+    # UPDATE = 7
+    # AUTOCOMPLETE = 8
+    MESSAGE = CHANNEL_MESSAGE_WITH_SOURCE
+    DEFER = DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+    UPDATE = UPDATE_MESSAGE
+    AUTOCOMPLETE = APPLICATION_COMMAND_AUTOCOMPLETE_RESULT
 
 
 class MessageFlags(IntFlag):
@@ -29,9 +55,25 @@ class InteractionResponse(ABC):
     def to_dict(self):
         pass
 
+    async def __call__(self) -> dict:
+        return self.to_dict()
+
+    def __await__(self):
+        return self.__call__().__await__()
+
+
+class PongResponse(InteractionResponse):
+    callback_type = InteractionCallbackType.PONG
+
+    def to_dict(self):
+        return {
+            'type': self.callback_type
+        }
+    
 
 @dataclass(slots=True)
 class MessageResponse(InteractionResponse):
+    callback_type: InteractionCallbackType.MESSAGE
     content: str
     ephemeral: bool = False
 
@@ -46,15 +88,15 @@ class MessageResponse(InteractionResponse):
         }
 
     def to_dict(self):
-        return {"type": 4, "data": self.to_payload()}
-
-    async def __call__(self):
-        return self.to_dict()
+        return {
+            "type": self.callback_type, 
+            "data": self.to_payload()
+        }
 
 
 @dataclass(slots=True)
 class DeferResponse(InteractionResponse):
-    ephemeral: bool = False
+    callback_type = InteractionCallbackType.DEFER
 
     def __init__(self, ephemeral: bool = False, finish: callable = None):
         self.flags = MessageFlags.EPHEMERAL if ephemeral else MessageFlags(0)
@@ -62,7 +104,7 @@ class DeferResponse(InteractionResponse):
 
     def to_dict(self):
         return {
-            "type": 5,
+            "type": self.callback_type,
             "data": {"flags": int(self.flags)}
         }
 
