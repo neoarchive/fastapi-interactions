@@ -1,9 +1,6 @@
-from dataclasses import dataclass
-from .responses import MessageResponse
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, Any
-from enum import IntEnum
-import httpx
+from enum import IntEnum, IntFlag
 
 Snowflake = str
 
@@ -14,6 +11,52 @@ class InteractionType(IntEnum):
     MESSAGE_COMPONENT = 3
     APPLICATION_COMMAND_AUTOCOMPLETE = 4
     MODAL_SUBMIT = 5
+
+
+class CommandType(IntEnum):
+    CHAT_INPUT = 1
+    USER = 2
+    MESSAGE = 3
+    PRIMARY_ENTRY_POINT = 4
+
+    CHAT = 1
+    ENTRY = 4
+
+
+class InteractionCallbackType(IntEnum):
+    PONG = 1
+    CHANNEL_MESSAGE_WITH_SOURCE = 4
+    DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE = 5
+    DEFERRED_UPDATE_MESSAGE = 6
+    UPDATE_MESSAGE = 7
+    APPLICATION_COMMAND_AUTOCOMPLETE_RESULT = 8
+    MODAL = 9
+    PREMIUM_REQUIRED = 10
+    LAUNCH_ACTIVITY = 12
+
+    MESSAGE = CHANNEL_MESSAGE_WITH_SOURCE
+    DEFER = DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+    UPDATE = UPDATE_MESSAGE
+    AUTOCOMPLETE = APPLICATION_COMMAND_AUTOCOMPLETE_RESULT
+
+
+class MessageFlags(IntFlag):
+    """Bit flags describing special message properties."""
+
+    CROSSPOSTED = 1 << 0
+    IS_CROSSPOST = 1 << 1
+    SUPPRESS_EMBEDS = 1 << 2
+    SOURCE_MESSAGE_DELETED = 1 << 3
+    URGENT = 1 << 4
+    HAS_THREAD = 1 << 5
+    EPHEMERAL = 1 << 6
+    LOADING = 1 << 7
+    FAILED_TO_MENTION_SOME_ROLES_IN_THREAD = 1 << 8
+
+    SUPPRESS_NOTIFICATIONS = 1 << 12
+    IS_VOICE_MESSAGE = 1 << 13
+    HAS_SNAPSHOT = 1 << 14
+    IS_COMPONENTS_V2 = 1 << 15
 
 
 class ApplicationCommandOptionType(IntEnum):
@@ -50,15 +93,15 @@ class Member(DiscordModel):
     permissions: Optional[str] = None
 
 
-class CommandInteractionOption(DiscordModel):
+class ApplicationCommandInteractionOption(DiscordModel):
     name: str
     type: ApplicationCommandOptionType
     value: Optional[str | int | float | bool] = None
-    options: list["CommandInteractionOption"] = Field(default_factory=list)
+    options: list["ApplicationCommandInteractionOption"] = Field(default_factory=list)
     focused: Optional[bool] = None
 
     @property
-    def options_by_name(self) -> dict[str, "CommandInteractionOption"]:
+    def options_by_name(self) -> dict[str, "ApplicationCommandInteractionOption"]:
         return {opt.name for opt in self.options}
 
     def get_option_value(self, name: str, default: Any = None) -> Any:
@@ -66,19 +109,19 @@ class CommandInteractionOption(DiscordModel):
         return option.value if option is not None else default
 
 
-CommandInteractionOption.model_rebuild()
+ApplicationCommandInteractionOption.model_rebuild()
 
 
 class ApplicationCommandData(DiscordModel):
     id: Snowflake
     name: str
-    type: int
+    type: CommandType
     guild_id: Optional[Snowflake] = None
     target_id: Optional[Snowflake] = None
-    options: list[CommandInteractionOption] = Field(default_factory=list)
+    options: list[ApplicationCommandInteractionOption] = Field(default_factory=list)
 
     @property
-    def options_by_name(self) -> dict[str, "CommandInteractionOption"]:
+    def options_by_name(self) -> dict[str, "ApplicationCommandInteractionOption"]:
         return {opt.name: opt for opt in self.options}
 
     def get_option_value(self, name: str, default: Any = None) -> Any:
@@ -101,44 +144,3 @@ class Interaction(DiscordModel):
     user: Optional[User] = None
     locale: Optional[str] = None
     guild_locale: Optional[str] = None
-
-
-@dataclass
-class Context:
-    interaction: Interaction
-    options: ApplicationCommandData
-    http: httpx.AsyncClient
-
-    @property
-    def user(self) -> User:
-        if self.interaction.user is not None:
-            return self.interaction.user
-        if (
-            self.interaction.member is not None
-            and self.interaction.member.user is not None
-        ):
-            return self.interaction.member.user
-        raise ValueError("Interaction does not contain `user` or `member.user`")
-
-    @property
-    def guild_id(self) -> Optional[Snowflake]:
-        return self.interaction.guild_id
-
-    @property
-    def channel_id(self) -> Optional[Snowflake]:
-        return self.interaction.channel_id
-
-    @property
-    def _webhook_base(self) -> str:
-        return f"https://discord.com/api/v10/webhooks/{self.interaction.application_id}/{self.interaction.token}"
-
-    async def send(self, content: str, ephemeral: bool = False) -> None:
-        message = MessageResponse(content, ephemeral=ephemeral)
-        await self.http.post(
-            url=self._webhook_base,
-            json=message.to_payload()
-        )
-
-    def get_option_value(self, name: str, default: Any = None) -> Any:
-        option = self.options.options_by_name.get(name)
-        return option.value if option is not None else default

@@ -5,12 +5,12 @@ from .responses import (
     PongResponse,
     MessageResponse
 )
+from .context import Context
 from fastapi.responses import JSONResponse
 from .models import (
     InteractionType,
     ApplicationCommandData,
     Interaction,
-    Context,
     Snowflake,
 )
 from typing import Any

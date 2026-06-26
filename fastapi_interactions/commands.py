@@ -1,14 +1,20 @@
 from dataclasses import dataclass, field
-from .models import Snowflake
+from .models import (
+    Snowflake,
+    ApplicationCommandOptionType
+)
 from typing import Optional
 import sys
+
+
+OptionType = ApplicationCommandOptionType
 
 
 @dataclass
 class CommandOption:
     name: str
     description: str
-    type: int = 3
+    type: OptionType = OptionType.STRING
     required: bool = True
 
     def as_payload(self):
