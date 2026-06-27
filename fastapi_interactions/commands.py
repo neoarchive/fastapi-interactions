@@ -230,3 +230,122 @@ class Option:
             required=required
         )
 
+    @staticmethod
+    def role(name: str, description: str, required: bool = True):
+        """Register a role option on a command.
+
+        Decorates a command callback to add a channel option parameter. The option name
+        must match a parameter name in the callback for automatic value binding.
+
+        Args:
+            name: The option name. Must match a callback parameter name.
+            description: Human-readable description shown to Discord users.
+            required: Whether the option is required. Defaults to True.
+
+        Returns:
+            A decorator that attaches the option metadata to the function.
+
+        Example:
+            @router.command(name="rmrole", description="Delete a role")
+            @Option.role(name="role", description="role to delete", required=True)
+            async def purge(ctx, role: Snowflake):
+                ...
+                return 'Role purged'
+        """
+        return Option.__create_operation_decorator(
+            name=name,
+            description=description,
+            option_type=OptionType.ROLE,
+            required=required
+        )
+
+    @staticmethod
+    def mentionable(name: str, description: str, required: bool = True):
+        """Register a mentionable option on a command.
+
+        Decorates a command callback to add a channel option parameter. The option name
+        must match a parameter name in the callback for automatic value binding.
+
+        Args:
+            name: The option name. Must match a callback parameter name.
+            description: Human-readable description shown to Discord users.
+            required: Whether the option is required. Defaults to True.
+
+        Returns:
+            A decorator that attaches the option metadata to the function.
+
+        Example:
+        @router.command(name="warn", description="Warn a user or role")
+        @Option.mentionable(name="target", description="User or role to warn", required=True)
+        async def warn(ctx, target: Snowflake):
+            return f"⚠️ Warning issued to <@&{target}>"
+        """
+        return Option.__create_operation_decorator(
+            name=name,
+            description=description,
+            option_type=OptionType.MENTIONABLE,
+            required=required
+        )
+
+    @staticmethod
+    def boolean(name: str, description: str, required: bool = True):
+        """Register a boolean option on a command.
+
+        Decorates a command callback to add a boolean option parameter. The option name
+        must match a parameter name in the callback for automatic value binding.
+
+        Args:
+            name: The option name. Must match a callback parameter name.
+            description: Human-readable description shown to Discord users.
+            required: Whether the option is required. Defaults to True.
+
+        Returns:
+            A decorator that attaches the option metadata to the function.
+
+        Example:
+        @router.command(name="ban", description="Ban a user")
+        @Option.user(name="target", description="User to ban", required=True)
+        @Option.boolean(name="soft", description="Is this a softban", required=True)
+        async def warn(ctx, target: Snowflake, soft: bool):
+            ...
+            if soft:
+                ...
+            else:
+                ...
+            return 'Command executed'
+        """
+        return Option.__create_operation_decorator(
+            name=name,
+            description=description,
+            option_type=OptionType.MENTIONABLE,
+            required=required
+        )
+
+    @staticmethod
+    def number(name: str, description: str, required: bool = True):
+        """Register a number option on a command.
+
+        Decorates a command callback to add a number option parameter. The option name
+        must match a parameter name in the callback for automatic value binding.
+        This is a float in python.
+
+        Args:
+            name: The option name. Must match a callback parameter name.
+            description: Human-readable description shown to Discord users.
+            required: Whether the option is required. Defaults to True.
+
+        Returns:
+            A decorator that attaches the option metadata to the function.
+
+        Example:
+        @router.command(name="rate", description="Rate something")
+        @Option.number(name="score", description="Rating from 0 to 10", required=True)
+        async def rate(ctx, score: float):
+            return f"Rating: {score}/10 ⭐"
+        """
+        return Option.__create_operation_decorator(
+            name=name,
+            description=description,
+            option_type=OptionType.MENTIONABLE,
+            required=required
+        )
