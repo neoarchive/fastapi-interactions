@@ -55,8 +55,6 @@ When syncing with `bot.sync_commands()`, guild-scoped commands are sent to the g
 
 ### ::: fastapi_interactions.commands.CommandRouter
 
-### ::: fastapi_interactions.commands.Option
-
 ### ::: fastapi_interactions.commands.Command
 
 ### ::: fastapi_interactions.commands.CommandMeta
