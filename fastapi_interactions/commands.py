@@ -1,11 +1,7 @@
 from dataclasses import dataclass, field
-from .models import (
-    Snowflake,
-    ApplicationCommandOptionType
-)
+from .models import Snowflake, ApplicationCommandOptionType
 from typing import Optional
 import sys
-
 
 OptionType = ApplicationCommandOptionType
 
@@ -63,7 +59,7 @@ class CommandRouter:
         return len(list(self.commands.keys()))
 
     def __str__(self) -> str:
-        return f'{list(self.commands.keys())}'
+        return f"{list(self.commands.keys())}"
 
     def command(self, name: str, description: str) -> None:
         """

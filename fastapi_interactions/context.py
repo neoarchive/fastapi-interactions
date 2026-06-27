@@ -1,9 +1,5 @@
 from dataclasses import dataclass
-from .models import (
-    Interaction, ApplicationCommandData,
-    User,
-    Snowflake
-)
+from .models import Interaction, ApplicationCommandData, User, Snowflake
 from typing import Optional, Any
 import httpx
 from .responses import MessageResponse
@@ -40,10 +36,7 @@ class Context:
 
     async def send(self, content: str, ephemeral: bool = False) -> None:
         message = MessageResponse(content, ephemeral=ephemeral)
-        await self.http.post(
-            url=self._webhook_base,
-            json=message.to_payload()
-        )
+        await self.http.post(url=self._webhook_base, json=message.to_payload())
 
     def get_option_value(self, name: str, default: Any = None) -> Any:
         option = self.options.options_by_name.get(name)

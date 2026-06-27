@@ -24,9 +24,7 @@ class PongResponse(InteractionResponse):
     callback_type = InteractionCallbackType.PONG
 
     def to_dict(self):
-        return {
-            'type': self.callback_type
-        }
+        return {"type": self.callback_type}
 
 
 @dataclass(slots=True)
@@ -40,16 +38,10 @@ class MessageResponse(InteractionResponse):
         self.flags = MessageFlags.EPHEMERAL if ephemeral else MessageFlags(0)
 
     def to_payload(self):
-        return {
-            'content': self.content,
-            'flags': int(self.flags)
-        }
+        return {"content": self.content, "flags": int(self.flags)}
 
     def to_dict(self):
-        return {
-            "type": self.callback_type,
-            "data": self.to_payload()
-        }
+        return {"type": self.callback_type, "data": self.to_payload()}
 
 
 @dataclass(slots=True)
@@ -61,10 +53,7 @@ class DeferResponse(InteractionResponse):
         self.finish = finish
 
     def to_dict(self):
-        return {
-            "type": self.callback_type,
-            "data": {"flags": int(self.flags)}
-        }
+        return {"type": self.callback_type, "data": {"flags": int(self.flags)}}
 
     async def __call__(self):
         if self.finish:

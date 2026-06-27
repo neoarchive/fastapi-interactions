@@ -1,10 +1,6 @@
 from fastapi import FastAPI, Request
 from .middleware import VerifySignatureMiddleware
-from .responses import (
-    InteractionResponse,
-    PongResponse,
-    MessageResponse
-)
+from .responses import InteractionResponse, PongResponse, MessageResponse
 from .context import Context
 from .models import (
     InteractionType,
@@ -108,15 +104,17 @@ class Bot:
                 )
             except (ValidationError, Exception):
                 # print(e.errors())
-                return await MessageResponse('Unexpected error', ephemeral=True)
+                return await MessageResponse("Unexpected error", ephemeral=True)
 
-            context = Context(interaction=interaction, options=application_command, http=self.http)
+            context = Context(
+                interaction=interaction, options=application_command, http=self.http
+            )
 
             return await self.dispatch(
                 command_name=application_command.name, ctx=context
             )
 
-        return await MessageResponse('Unsupported interaction received', ephemeral=True)
+        return await MessageResponse("Unsupported interaction received", ephemeral=True)
 
     def _register_routes(self) -> None:
         """Set up middleware and the interactions endpoint.
@@ -125,7 +123,9 @@ class Bot:
         for the interactions endpoint. Called during initialization.
         """
         self.app.add_middleware(VerifySignatureMiddleware, public_key=self.public_key)
-        self.app.add_api_route(self.interactions_path, endpoint=self.process_interactions, methods=['POST'])
+        self.app.add_api_route(
+            self.interactions_path, endpoint=self.process_interactions, methods=["POST"]
+        )
 
     def attach_router(self, router: CommandRouter) -> None:
         """Attach a CommandRouter to the bot.
@@ -144,7 +144,9 @@ class Bot:
         if not isinstance(router, CommandRouter):
             raise TypeError(f"Expected a CommandRouter, got {type(router).__name__!r}")
         self.commands.update(router.commands)
-        logger.info(f"Router {router.name!r} attached with {len(router)} commands - {str(router)}")
+        logger.info(
+            f"Router {router.name!r} attached with {len(router)} commands - {str(router)}"
+        )
 
     def __load_routers_from_module(self, module) -> None:
         """Discover and register routers from a module.
@@ -242,14 +244,14 @@ class Bot:
 
     def __put__commands(self, url: str, payload: list) -> None:
         """Send a batch of commands to Discord's API.
-        
+
         Makes a PUT request to the specified Discord endpoint with the command payload.
         Handles both global and guild-scoped command registration.
-        
+
         Args:
             url: The Discord API endpoint (global or guild-scoped).
             payload: List of command definitions to register.
-        
+
         Raises:
             Exception: If the HTTP response status is not 200.
         """
@@ -277,7 +279,7 @@ class Bot:
         """
         command = self.commands.get(command_name)
         if command is None:
-            return await MessageResponse('Unknown command', ephemeral=True)
+            return await MessageResponse("Unknown command", ephemeral=True)
 
         result = await call_with_options(command.callback, ctx)
 
