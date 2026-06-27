@@ -1,89 +1,39 @@
 # Deploying to Vercel
 
-FastAPI Interactions is designed with Vercel's serverless Python runtime in mind. There are no background threads, no gateway connections, and no startup side-effects — each interaction is handled as an independent HTTP request.
+FastAPI Interactions is designed for Vercel's serverless Python runtime. Each interaction is handled as a stateless HTTP request with no persistent connections or startup overhead.
 
 ## Project structure
 
-Vercel's Python runtime looks for a FastAPI instance named `app` at one of a set of recognised entrypoint paths. The simplest layout:
+Vercel's Python runtime automatically detects a FastAPI instance named `app` at your entrypoint. Since `bot.app` exposes a FastAPI instance, you just need to export it.
 
 ```
 my-bot/
-├── api/
-│   └── index.py       ← Vercel serves this at /api, proxied to /interactions
-├── commands/
-│   ├── __init__.py
-│   └── general.py
+├── main.py
+├── commands.py
 ├── sync_commands.py
-└── vercel.json
+├── .env
 ```
 
-## Entrypoint
-
-```python
-# api/index.py
-from fastapi_interactions import Bot
-
-bot = Bot(
-    app_id=123456789,
-    public_key="your_public_key",
-    bot_token="Bot your_token",
-)
-
-bot.load_commands("commands")
-
-app = bot.app
-```
-
-!!! warning
-    The variable must be named `app` and must be a `FastAPI` instance. Vercel's runtime detects it by name.
-
-## vercel.json
-
-```json
-{
-  "rewrites": [
-    { "source": "/interactions", "destination": "/api/index" }
-  ]
-}
-```
-
-Set your Discord interactions endpoint URL to `https://your-project.vercel.app/interactions`.
-
-## Syncing commands at build time
-
-Add `sync_commands.py` to your Vercel build command so commands are registered automatically on every production deploy.
-
-In the Vercel dashboard under **Settings → Build & Development Settings**:
-
-```
-Build Command: python sync_commands.py
-```
-
-```python
-# sync_commands.py
-import os
-import sys
-from fastapi_interactions import Bot
-
-# Only sync on production deploys — prevents preview builds from
-# overwriting the live global command set with work-in-progress commands.
-if os.environ.get("VERCEL_ENV") != "production":
-    print(f"Skipping command sync: VERCEL_ENV={os.environ.get('VERCEL_ENV')!r}")
-    sys.exit(0)
-
-bot = Bot(
-    app_id=int(os.environ["DISCORD_APP_ID"]),
-    public_key=os.environ["DISCORD_PUBLIC_KEY"],
-    bot_token=os.environ["DISCORD_BOT_TOKEN"],
-)
-
-bot.load_commands("commands")
-bot.sync_commands()
-```
+See [Vercel's FastAPI documentation](https://vercel.com/docs/frameworks/backend/fastapi#exporting-the-fastapi-application) for more details.
 
 ## Environment variables
 
-Set these in the Vercel dashboard under **Settings → Environment Variables**. Scope `DISCORD_BOT_TOKEN` and `DISCORD_PUBLIC_KEY` to **Production only** so that preview deployments can't accidentally interact with your live bot.
+Your bot needs Discord credentials. Never hardcode these — use environment variables instead.
+
+**Local Development:** Create a `.env` file and use `environs` to load it:
+
+```bash
+pip install environs
+```
+
+`.env`:
+```
+DISCORD_APP_ID=123
+DISCORD_PUBLIC_KEY=456
+DISCORD_BOT_TOKEN=567
+```
+
+**Production (Vercel):** Configure variables in the Vercel dashboard under **Settings → Environment Variables**. Scope `DISCORD_BOT_TOKEN` and `DISCORD_PUBLIC_KEY` to **Production only** so preview deployments don't affect your live bot.
 
 | Variable | Description |
 |---|---|
@@ -91,8 +41,114 @@ Set these in the Vercel dashboard under **Settings → Environment Variables**. 
 | `DISCORD_PUBLIC_KEY` | Ed25519 public key from the Developer Portal |
 | `DISCORD_BOT_TOKEN` | Bot token, prefixed with `Bot ` |
 
-## Cold starts
+## Application setup
 
-Vercel's serverless functions spin up on demand. Discord requires a response within **3 seconds** of receiving an interaction. The framework adds minimal overhead — no database connections, no gateway handshakes — so cold starts are typically well within that window.
+### Entrypoint
 
-For commands that do meaningful work (API calls, database queries), use `ctx.defer()` to acknowledge the interaction immediately and deliver the real response as a followup once the work is done. See [Context](context.md#deferring) for details.
+Create `main.py` to initialize your bot and expose the FastAPI app:
+
+```python
+# main.py
+from fastapi_interactions import Bot
+from .commands import router
+from environs import env
+
+env.read_env()
+
+bot = Bot(
+    app_id=env.int('DISCORD_APP_ID'),
+    public_key=env.str(DISCORD_PUBLIC_KEY'),
+    bot_token=env.star('DISCORD_BOT_TOKEN')
+)
+
+bot.attach_router(router)
+app = bot.app
+
+```
+
+!!! warning
+    The variable must be named `app` and must be a `FastAPI` instance. Vercel's runtime detects it by name.
+
+### Commands
+
+Define your commands in `commands.py`:
+
+```python
+#commands.py
+from fastapi_interactions.commands import CommandRouter, Option
+
+router = CommandRouter('my-router')
+
+@router.command(name='username', description='Retrieve your username')
+async def username(ctx):
+    return f'Hello {ctx.user.username}'
+
+@router.command(name='echo', description='Echo a text')
+@Option.string(name='text', description='Text to echo')
+async def echo(ctx, text: str):
+    return text
+
+```
+
+## Syncing commands
+
+Command syncing happens at deploy time, not at runtime. Create `sync_commands.py`:
+
+```python
+# sync_commands.py
+from fastapi_interactions import Bot
+from .commands import router
+from environs import env
+import sys
+
+env.read_env()
+
+vercel_env = env.str('VERCEL_ENV')
+
+if vercel_env != 'Production':
+    print(f'Skipping command sync: VERCEL_ENV={vercel_env!r}')
+    sys.exit(0)
+
+bot = Bot(
+    app_id=env.int('DISCORD_APP_ID'),
+    public_key=env.str(DISCORD_PUBLIC_KEY'),
+    bot_token=env.star('DISCORD_BOT_TOKEN')
+)
+
+bot.attach_router(router)
+bot.sync_commands()
+
+```
+
+This script skips syncing on preview builds, preventing them from overwriting your live commands.
+
+### Configure build command
+
+In the Vercel dashboard under **Settings → Build & Development Settings**, set the build command to:
+
+```
+python sync_commands.py
+```
+
+Commands are synced automatically on every production deploy. Global command registration can take up to an hour to propagate. During development, use guild-scoped routers for instant updates:
+
+```python
+router = CommandRouter(guild_id="123456789")
+```
+
+## After deployment
+
+Once your app is live, set your Discord interactions endpoint URL in the [Developer Portal](https://discord.com/developers/applications):
+
+```
+https://your-project.vercel.app/interactions
+```
+
+Discord will verify the endpoint by sending a PING handshake. Once confirmed, your bot is ready.
+
+## Performance
+
+Vercel's serverless functions spin up on demand. Discord requires a response within **3 seconds**. The framework adds minimal overhead — no database connections, no gateway handshakes — so cold starts are typically well within that window.
+
+!!! warning
+    Long-running operations don't work with deferred responses on serverless because the container terminates after the HTTP response is sent. If a command needs more than 3 seconds, either complete the work within the response window, or deploy to traditional hosting. Most Discord bots don't need this pattern.

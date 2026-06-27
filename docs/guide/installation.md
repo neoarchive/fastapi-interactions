@@ -11,7 +11,7 @@
 pip install fastapi-interactions
 ```
 
-This pulls in FastAPI, Starlette, httpx, pydantic, and PyNaCl as dependencies. No other packages are required.
+This pulls in FastAPI, Starlette, httpx, pydantic, and PyNaCl, loguru as dependencies. No other packages are required.
 
 ## Running locally
 

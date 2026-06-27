@@ -20,8 +20,7 @@ Discord's interactions API is different — Discord POSTs to your HTTP endpoint 
 ## At a glance
 
 ```python
-from fastapi_interactions import Bot, CommandRouter, option
-from fastapi_interactions.responses import MessageResponse
+from fastapi_interactions import Bot, CommandRouter, Option
 
 bot = Bot(
     app_id=123456789,
@@ -36,7 +35,7 @@ async def ping(ctx):
     return "Pong!"
 
 @router.command(name="echo", description="Echo a message back")
-@router.option(name="text", description="The text to echo", required=True)
+@Option.string(name="text", description="The text to echo", required=True)
 async def echo(ctx, text: str):
     return text
 
@@ -44,6 +43,63 @@ bot.attach_router(router)
 
 app = bot.app
 ```
+
+## Deferred Responses
+
+You can respond with a DeferredResponse if you have more complex work to do behind the scenes.
+
+```python
+from fastapi_interactions.responses import DeferredResponse
+import asyncio
+
+@router.command(name='process', description="Process some text")
+@Option.string(name='text', description='text to process')
+async def process(ctx, text: str):
+    async def finish():
+        await ctx.send('Beginning processing')
+        asyncio.sleep(5) # simulate something slow 
+        awat ctx.send(f'Processed text is {text!r}')
+
+    return DeferredResponse(finish=finish)
+```
+
+!!! warning
+    Long-running operations don't work with deferred responses on serverless because the container terminates after the HTTP response is sent. If a command needs more than 3 seconds, either complete the work within the response window, or use a traditional hosting setup. Most Discord bots don't need this pattern.
+
+## Sync commands
+
+fastapi-interactions supports registering your commands with discord automatically with a function call `bot.sync_commands()`
+
+!!! warning
+    The sync commands should only be called during build time on a serverless architecture. You don't want to make an outbound http request
+    everytime you receive an interaction from discord.
+
+```python
+from fastapi_interactions import Bot, CommandRouter, Option
+
+bot = Bot(
+    app_id=123456789,
+    public_key="your_public_key",
+    bot_token="Bot your_token",
+)
+
+router = CommandRouter()
+
+@router.command(name="ping", description="Check bot latency")
+async def ping(ctx):
+    return "Pong!"
+
+@router.command(name="echo", description="Echo a message back")
+@Option.string(name="text", description="The text to echo", required=True)
+async def echo(ctx, text: str):
+    return text
+
+bot.attach_router(router)
+bot.sync_commands()
+app = bot.app
+```
+
+
 
 ## Next steps
 

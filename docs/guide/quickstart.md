@@ -36,7 +36,7 @@ async def hello(ctx):
 async def echo(ctx, text: str):
     return f"You said: {text}"
 
-bot.include_router(router)
+bot.attach_router(router)
 bot.sync_commands() - # Call the script directly `python main.py` once to sync commands and then comment this line out. 
 app = bot.app
 
