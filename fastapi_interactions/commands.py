@@ -82,50 +82,151 @@ class CommandRouter:
 
         def decorator(func):
             meta = getattr(
-                func, "__command_meta__", CommandMeta(name="", description="", type=1)
+                func, "_command_meta", CommandMeta(name="", description="", type=1)
             )
             meta.name = name
             meta.description = description
             self.commands[name] = Command(
                 callback=func, meta=meta, guild_id=self.guild_id
             )
-            func.__dict__.pop("__command_meta__", None)
+            func.__dict__.pop("_command_meta", None)
             return func
 
         return decorator
 
 
-def option(name: str, description: str, type: int = 3, required: bool = False) -> None:
-    """
-    Create an option with your slash command
+class Option:
+    @staticmethod
+    def __create_operation_decorator(name: str, description: str, option_type: OptionType, required: bool = True):
+        def decorator(func):
+            meta = getattr(
+                func, '_command_meta', CommandMeta(name='', description='', type=1)
+            )
 
-    Args:
-        name (str): name for your option field
-        description (str): help description for the option field
-        type (int, optional): option type. Defaults to 3.
-        required (bool, optional): if option is required. Defaults to True.
+            meta.options.insert(
+                0,
+                CommandOption(
+                    name=name,
+                    description=description,
+                    type=option_type,
+                    required=required
+                )
+            )
+            func._command_meta = meta
+            return func
+        return decorator
 
-    Example:
-        ```python
-        @router.command("echo", "Echo a string back")
-        @option(name="phrase", description="Echo phrase", required=True)
-        async def echo(ctx):
-            return ctx.get_option_value(phrase)
-        ```
-    """
+    @staticmethod
+    def string(name: str, description: str, required: bool = True):
+        """Register a string option on a command.
 
-    def decorator(func):
-        meta = getattr(
-            func, "__command__meta__", CommandMeta(name="", description="", type=1)
+        Decorates a command callback to add a string option parameter. The option name
+        must match a parameter name in the callback for automatic value binding.
+
+        Args:
+            name: The option name. Must match a callback parameter name.
+            description: Human-readable description shown to Discord users.
+            required: Whether the option is required. Defaults to True.
+
+        Returns:
+            A decorator that attaches the option metadata to the function.
+
+        Example:
+            @router.command(name="echo", description="Echo text")
+            @Option.string(name="text", description="Text to echo", required=True)
+            async def echo(ctx, text: str):
+                return text
+        """
+        return Option.__create_operation_decorator(
+            name=name,
+            description=description,
+            option_type=OptionType.STRING,
+            required=required
         )
 
-        meta.options.insert(
-            0,
-            CommandOption(
-                name=name, description=description, type=type, required=required
-            ),
-        )
-        func.__command_meta__ = meta
-        return func
+    @staticmethod
+    def integer(name: str, description: str, required: bool = True):
+        """Register an integer option on a command.
 
-    return decorator
+        Decorates a command callback to add an integer option parameter. The option name
+        must match a parameter name in the callback for automatic value binding.
+
+        Args:
+            name: The option name. Must match a callback parameter name.
+            description: Human-readable description shown to Discord users.
+            required: Whether the option is required. Defaults to True.
+
+        Returns:
+            A decorator that attaches the option metadata to the function.
+
+        Example:
+            @router.command(name="echo", description="Echo integer")
+            @Option.integer(name="number", description="Integer to echo", required=True)
+            async def echo(ctx, number: int):
+                return int
+        """
+        return Option.__create_operation_decorator(
+            name=name,
+            description=description,
+            option_type=OptionType.INTEGER,
+            required=required
+        )
+
+    @staticmethod
+    def user(name: str, description: str, required: bool = True):
+        """Register a user option on a command.
+
+        Decorates a command callback to add a user option parameter. The option name
+        must match a parameter name in the callback for automatic value binding.
+
+        Args:
+            name: The option name. Must match a callback parameter name.
+            description: Human-readable description shown to Discord users.
+            required: Whether the option is required. Defaults to True.
+
+        Returns:
+            A decorator that attaches the option metadata to the function.
+
+        Example:
+            @router.command(name="kick", description="Kick a user")
+            @Option.user(name="user", description="Target user to kick", required=True)
+            async def kick(ctx, user: Snowflake):
+                ...
+                return 'User kicked'
+        """
+        return Option.__create_operation_decorator(
+            name=name,
+            description=description,
+            option_type=OptionType.USER,
+            required=required
+        )
+
+    @staticmethod
+    def channel(name: str, description: str, required: bool = True):
+        """Register a channel option on a command.
+
+        Decorates a command callback to add a channel option parameter. The option name
+        must match a parameter name in the callback for automatic value binding.
+
+        Args:
+            name: The option name. Must match a callback parameter name.
+            description: Human-readable description shown to Discord users.
+            required: Whether the option is required. Defaults to True.
+
+        Returns:
+            A decorator that attaches the option metadata to the function.
+
+        Example:
+            @router.command(name="purge", description="Purge a channel")
+            @Option.user(name="channel", description="Target channel to purge", required=True)
+            async def purge(ctx, channel: Snowflake):
+                ...
+                return 'Channel purged'
+        """
+        return Option.__create_operation_decorator(
+            name=name,
+            description=description,
+            option_type=OptionType.CHANNEL,
+            required=required
+        )
+

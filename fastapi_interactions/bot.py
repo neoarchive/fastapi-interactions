@@ -18,6 +18,7 @@ import importlib
 import pkgutil
 from loguru import logger
 import inspect
+import types
 
 
 async def call_with_options(callback: callable, ctx: Context) -> Any:
@@ -86,7 +87,7 @@ class Bot:
 
         self.http = httpx.AsyncClient()
 
-        self.app = FastAPI()
+        self.app = FastAPI(openapi_url=None)
         self._register_routes()
 
     async def process_interactions(self, request: Request):
@@ -148,7 +149,7 @@ class Bot:
             f"Router {router.name!r} attached with {len(router)} commands - {str(router)}"
         )
 
-    def __load_routers_from_module(self, module) -> None:
+    def __load_routers_from_module(self, module: types.ModuleType) -> None:
         """Discover and register routers from a module.
 
         Checks for an explicit __routers__ list first. If not found, scans the module

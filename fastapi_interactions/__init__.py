@@ -1,4 +1,4 @@
 from .bot import Bot
-from .commands import CommandRouter, option
+from .commands import CommandRouter, Option
 
-__all__ = ["Bot", "CommandRouter", "option"]
+__all__ = ["Bot", "CommandRouter", "Option"]
