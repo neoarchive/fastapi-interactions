@@ -1,0 +1,31 @@
+[build-system]
+requires = ['setuptools>=82.0.1']
+build-backend = 'setuptools.build_meta'
+
+[project]
+name = 'fastapi-interactions'
+version = '0.0.1'
+description='A lightweight framework for discord interactions over http built on FastAPI'
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    'fastapi[standard]>=0.138.0',
+    'pydantic>=2.13.4',
+    'pynacl>=1.6.2',
+    'httpx>=0.28.1',
+    'loguru>=0.7.3'
+]
+authors = [
+    { name = "Haider Ali", email = "haideralidevnull@gmail.com" }
+]
+
+[project.optional-dependencies]
+docs = [
+    "mkdocs",
+    "mkdocstrings[python]",
+    "mkdocs-material"
+]
+
+[tool.setuptools.packages.find]
+include = ['fastapi_interactions*']
+exclude = ['docs*', 'exts*', 'tests*']

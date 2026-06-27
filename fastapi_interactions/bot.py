@@ -6,7 +6,6 @@ from .responses import (
     MessageResponse
 )
 from .context import Context
-from fastapi.responses import JSONResponse
 from .models import (
     InteractionType,
     ApplicationCommandData,
@@ -117,9 +116,14 @@ class Bot:
                 command_name=application_command.name, ctx=context
             )
 
-        return await MessageResponse('Unsupported interaction received', ephemeral=True) 
+        return await MessageResponse('Unsupported interaction received', ephemeral=True)
 
     def _register_routes(self) -> None:
+        """Set up middleware and the interactions endpoint.
+
+        Registers the signature verification middleware and configures the route handler
+        for the interactions endpoint. Called during initialization.
+        """
         self.app.add_middleware(VerifySignatureMiddleware, public_key=self.public_key)
         self.app.add_api_route(self.interactions_path, endpoint=self.process_interactions, methods=['POST'])
 
@@ -143,6 +147,15 @@ class Bot:
         logger.info(f"Router {router.name!r} attached with {len(router)} commands - {str(router)}")
 
     def __load_routers_from_module(self, module) -> None:
+        """Discover and register routers from a module.
+
+        Checks for an explicit __routers__ list first. If not found, scans the module
+        for all CommandRouter instances and registers them automatically.
+
+        Args:
+            module: The module to scan for routers.
+
+        """
         routers = getattr(module, "__routers__", None)
 
         if routers is None:
@@ -228,6 +241,18 @@ class Bot:
             self.__put__commands(f"{self.base_url}/guilds/{guild_id}/commands", payload)
 
     def __put__commands(self, url: str, payload: list) -> None:
+        """Send a batch of commands to Discord's API.
+        
+        Makes a PUT request to the specified Discord endpoint with the command payload.
+        Handles both global and guild-scoped command registration.
+        
+        Args:
+            url: The Discord API endpoint (global or guild-scoped).
+            payload: List of command definitions to register.
+        
+        Raises:
+            Exception: If the HTTP response status is not 200.
+        """
         headers = {"Authorization": f"Bot {self.bot_token}"}
         with httpx.Client() as client:
             response = client.put(url, headers=headers, json=payload)
@@ -237,7 +262,19 @@ class Bot:
             )
         logger.info(f"Synced {len(payload)} commands to {url!r}")
 
-    async def dispatch(self, command_name: str, ctx: Context) -> JSONResponse:
+    async def dispatch(self, command_name: str, ctx: Context) -> InteractionResponse:
+        """Invoke a command and return its response.
+
+        Looks up the command by name and invokes its callback with the provided context.
+        Option values are automatically bound to the callback's parameters.
+
+        Args:
+            command_name (str): The name of the command to invoke.
+            ctx (Context): The interaction context.
+
+        Returns:
+            An InteractionResponse instance
+        """
         command = self.commands.get(command_name)
         if command is None:
             return await MessageResponse('Unknown command', ephemeral=True)
