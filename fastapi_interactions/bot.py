@@ -94,32 +94,34 @@ class Bot:
         self.app = FastAPI()
         self._register_routes()
 
+    async def process_interactions(self, request: Request):
+        payload = json.loads(request.state.raw_body)
+
+        if payload["type"] == InteractionType.PING:
+            return await PongResponse()
+
+        if payload["type"] == InteractionType.APPLICATION_COMMAND:
+            """Construct Context"""
+            try:
+                interaction = Interaction.model_validate(payload)
+                application_command = ApplicationCommandData.model_validate(
+                    interaction.data
+                )
+            except (ValidationError, Exception):
+                # print(e.errors())
+                return await MessageResponse('Unexpected error', ephemeral=True)
+
+            context = Context(interaction=interaction, options=application_command, http=self.http)
+
+            return await self.dispatch(
+                command_name=application_command.name, ctx=context
+            )
+
+        return await MessageResponse('Unsupported interaction received', ephemeral=True) 
+
     def _register_routes(self) -> None:
         self.app.add_middleware(VerifySignatureMiddleware, public_key=self.public_key)
-
-        @self.app.post(self.interactions_path)
-        async def interactions(request: Request):
-            payload = json.loads(request.state.raw_body)
-
-            if payload["type"] == InteractionType.PING:
-                return await PongResponse()
-
-            if payload["type"] == InteractionType.APPLICATION_COMMAND:
-                """Construct Context"""
-                try:
-                    interaction = Interaction.model_validate(payload)
-                    application_command = ApplicationCommandData.model_validate(
-                        interaction.data
-                    )
-                except (ValidationError, Exception):
-                    # print(e.errors())
-                    return await MessageResponse('Unexpected error', ephemeral=True)
-
-                context = Context(interaction=interaction, options=application_command, http=self.http)
-
-                return await self.dispatch(
-                    command_name=application_command.name, ctx=context
-                )
+        self.app.add_api_route(self.interactions_path, endpoint=self.process_interactions, methods=['POST'])
 
     def attach_router(self, router: CommandRouter) -> None:
         """Attach a CommandRouter to the bot.
