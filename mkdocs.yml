@@ -51,6 +51,7 @@ nav:
   - API Reference:
     - Bot: api/bot.md
     - Commands: api/commands.md
+    - Options: api/options.md
     - Context: api/context.md
     - Responses: api/responses.md
     - Models: api/models.md
