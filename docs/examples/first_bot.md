@@ -15,8 +15,9 @@ BOT_TOKEN=Bot your_bot_token_here
 ## The bot
 
 ```python
+# main.py
 from fastapi_interactions import Bot
-from fastapi_interactions.commands import CommandRouter, option
+from fastapi_interactions.commands import CommandRouter, Option
 from fastapi_interactions.responses import DeferResponse
 from environs import env
 import asyncio
@@ -37,7 +38,7 @@ async def username(ctx):
 
 
 @router.command("echo", "Repeat after me")
-@option("text", "Text to repeat back", required=True)
+@Option.string("text", "Text to repeat back", required=True)
 async def echo(ctx, text: str):
     async def finish():
         await asyncio.sleep(2)
@@ -49,12 +50,28 @@ async def echo(ctx, text: str):
 
 bot.attach_router(router)
 
-""" run sync commands once; just execute this script directly with python to do so and then comment it out"""
-# bot.sync_commands()
-# bot.delete_all__commands()
+# bot.sync_commands() # Run this only once and then comment out if necessary or use a secondary python script just to call sync commands
 app = bot.app
 
 ```
+## Run
+
+Simply use the fastapi cli to run it.
+
+```
+fastapi dev main.py
+```
+
+## Ngrok
+
+Use ngrok for local development and testing. Simply run your bot using fastapi cli and then 
+
+```
+ngrok http 8000
+```
+
+!!! information
+    Make sure your ngrok url is set as your Discord app's interactions webhook url in the discord dev portal.
 
 ## What's happening
 
