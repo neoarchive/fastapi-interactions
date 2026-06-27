@@ -64,10 +64,13 @@ async def slow(ctx):
     return DeferResponse(finish=finish)
 ```
 
-When a user invokes `/slow`:
-1. They immediately see "thinking..." (the defer)
-2. Your command's `finish` function runs in the background
-3. After 10 seconds, they see "Done! Here's your result."
+When a user invokes `/slow`:<br/>
+    1. They immediately see "thinking..." (the defer)<br/>
+    2. Your command's `finish` function runs in the background<br/>
+    3. After 10 seconds, they see "Done! Here's your result."<br/>
+
+!!! warning
+    Long-running operations don't work with deferred responses on serverless because the container terminates after the HTTP response is sent. If a command needs more than 3 seconds, either complete the work within the response window, or use a traditional hosting setup. Most Discord bots don't need this pattern.
 
 ### Ephemeral defers
 
@@ -117,9 +120,11 @@ This works because `ctx` is captured from the enclosing scope.
 |---|---|
 | `MessageResponse` | Reply immediately with a message |
 | `DeferResponse` | Acknowledge while doing async work |
-| `UpdateMessageResponse` | Update a message that a component is attached to (for buttons/selects) |
-| `AutocompleteResponse` | Provide autocomplete choices for an option |
-| `ModalResponse` | Open a modal dialog |
 | `PongResponse` | Respond to a PING (automatic, you don't need to use this) |
+<!-- | `UpdateMessageResponse` | Update a message that a component is attached to (for buttons/selects) | -->
+<!-- | `AutocompleteResponse` | Provide autocomplete choices for an option | -->
+<!-- | `ModalResponse` | Open a modal dialog | -->
+
+Other response types will be implemented along the way.
 
 Full API documentation is available in the [API reference](../api/responses.md).

@@ -26,11 +26,13 @@ bot.attach_router(router)
 
 ## Adding options
 
-Options are the parameters users fill in when invoking a command. Use the `@option` decorator:
+Options are the parameters users fill in when invoking a command. Use the `Option` class with type-specific static methods:
 
 ```python
+from fastapi_interactions.commands import CommandRouter, Option
+
 @router.command(name="greet", description="Greet someone")
-@router.option(name="name", description="Who to greet", required=True)
+@Option.string(name="name", description="Who to greet", required=True)
 async def greet(ctx, name: str):
     return f"Hello, {name}!"
 ```
@@ -41,8 +43,8 @@ The parameter name in your function (`name: str`) must match the option name you
 
 ```python
 @router.command(name="calculate", description="Add two numbers")
-@router.option(name="a", description="First number", type=4, required=True)
-@router.option(name="b", description="Second number", type=4, required=True)
+@Option.integer(name="a", description="First number", required=True)
+@Option.integer(name="b", description="Second number", required=True)
 async def calculate(ctx, a: int, b: int):
     return f"{a} + {b} = {a + b}"
 ```
@@ -55,31 +57,35 @@ Use Python's default parameter syntax:
 
 ```python
 @router.command(name="search", description="Search for something")
-@router.option(name="query", description="What to search for", required=True)
-@router.option(name="limit", description="Result limit", type=4, required=False)
+@Option.string(name="query", description="What to search for", required=True)
+@Option.integer(name="limit", description="Result limit", required=False)
 async def search(ctx, query: str, limit: int = 10):
     return f"Searching for {query!r} (limit: {limit})"
 ```
 
 Required options must be declared before optional ones. Discord rejects command registrations that violate this ordering.
 
-### Option types
+### Available option types
 
-The `type` parameter specifies what kind of value the option accepts:
+Each option type has a corresponding `Option` static method:
 
-| Type | Value | Python type |
+| Method | Type | Python type |
 |---|---|---|
-| STRING | 3 (default) | `str` |
-| INTEGER | 4 | `int` |
-| NUMBER | 10 | `float` |
-| BOOLEAN | 5 | `bool` |
-| USER | 6 | `str` (snowflake) |
-| CHANNEL | 7 | `str` (snowflake) |
-| ROLE | 8 | `str` (snowflake) |
+| `Option.string()` | STRING | `str` |
+| `Option.integer()` | INTEGER | `int` |
+| `Option.number()` | NUMBER | `float` |
+| `Option.boolean()` | BOOLEAN | `bool` |
+| `Option.user()` | USER | `str` (snowflake) |
+| `Option.channel()` | CHANNEL | `str` (snowflake) |
+| `Option.role()` | ROLE | `str` (snowflake) |
+| `Option.mentionable()` | MENTIONABLE | `str` (snowflake) |
 
 ```python
-@router.option(name="count", description="How many", type=4, required=True)
-@router.option(name="enabled", description="Enable it", type=5, required=True)
+from fastapi_interactions.commands import CommandRouter, Option
+
+@router.command(name="configure", description="Configure settings")
+@Option.integer(name="count", description="How many", required=True)
+@Option.boolean(name="enabled", description="Enable it", required=True)
 async def configure(ctx, count: int, enabled: bool):
     return f"Count: {count}, Enabled: {enabled}"
 ```
@@ -107,8 +113,8 @@ async def whoami(ctx):
 
 ```python
 @router.command(name="config", description="Configure settings")
-@router.option(name="setting", description="Setting name", required=True)
-@router.option(name="value", description="Setting value", required=False)
+@Option.string(name="setting", description="Setting name", required=True)
+@Option.string(name="value", description="Setting value", required=False)
 async def config(ctx, setting: str):
     value = ctx.get_option_value("value")
     if value is None:
@@ -130,13 +136,13 @@ For more control, return a response object. See [Responses](responses.md) for th
 
 ## Decorator order
 
-Decorators stack bottom-up. Make sure `@option` appears **below** `@command`:
+Decorators stack bottom-up. Make sure `@Option.*()` appears **below** `@router.command()`:
 
 ```python
 @router.command(name="echo", description="Echo text")
-@router.option(name="text", description="Text to echo", required=True)
+@Option.string(name="text", description="Text to echo", required=True)
 async def echo(ctx, text: str):
     return text
 ```
 
-If you put `@command` on the bottom, the decorators run in the wrong order and your options won't be attached.
+If you put `@router.command()` on the bottom, the decorators run in the wrong order and your options won't be attached.

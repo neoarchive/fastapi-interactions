@@ -183,9 +183,7 @@ Run this once:
 python sync_commands.py
 ```
 
-Then comment out `bot.sync_commands()` in the script — you only need to sync when you add, remove, or modify commands.
-
-## Organizing large bots
+ Organizing large bots
 
 For bots with many commands, consider grouping by feature:
 
