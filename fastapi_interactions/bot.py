@@ -210,7 +210,6 @@ class Bot:
                 module.__path__, module.__name__ + "."
             )
             for _, module_name, is_package in walked_packages:
-                print(module_name, is_package)
                 if not is_package:
                     imported = importlib.import_module(module_name)
                     self.__load_routers_from_module(imported)
