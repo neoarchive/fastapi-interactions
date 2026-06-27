@@ -330,7 +330,7 @@ class Option:
         return Option.__create_operation_decorator(
             name=name,
             description=description,
-            option_type=OptionType.MENTIONABLE,
+            option_type=OptionType.BOOLEAN,
             required=required
         )
 
@@ -361,6 +361,6 @@ class Option:
         return Option.__create_operation_decorator(
             name=name,
             description=description,
-            option_type=OptionType.MENTIONABLE,
+            option_type=OptionType.NUMBER,
             required=required
         )
