@@ -132,10 +132,12 @@ class Option:
             A decorator that attaches the option metadata to the function.
 
         Example:
-            @router.command(name="echo", description="Echo text")
-            @Option.string(name="text", description="Text to echo", required=True)
-            async def echo(ctx, text: str):
-                return text
+        ```python
+        @router.command(name="echo", description="Echo text")
+        @Option.string(name="text", description="Text to echo", required=True)
+        async def echo(ctx, text: str):
+            return text
+        ```
         """
         return Option.__create_operation_decorator(
             name=name,
@@ -160,10 +162,12 @@ class Option:
             A decorator that attaches the option metadata to the function.
 
         Example:
-            @router.command(name="echo", description="Echo integer")
-            @Option.integer(name="number", description="Integer to echo", required=True)
-            async def echo(ctx, number: int):
-                return int
+        ```python
+        @router.command(name="echo", description="Echo integer")
+        @Option.integer(name="number", description="Integer to echo", required=True)
+        async def echo(ctx, number: int):
+            return int
+        ```
         """
         return Option.__create_operation_decorator(
             name=name,
@@ -188,11 +192,13 @@ class Option:
             A decorator that attaches the option metadata to the function.
 
         Example:
-            @router.command(name="kick", description="Kick a user")
-            @Option.user(name="user", description="Target user to kick", required=True)
-            async def kick(ctx, user: Snowflake):
-                ...
-                return 'User kicked'
+        ```python
+        @router.command(name="kick", description="Kick a user")
+        @Option.user(name="user", description="Target user to kick", required=True)
+        async def kick(ctx, user: Snowflake):
+            ...
+            return 'User kicked'
+        ```
         """
         return Option.__create_operation_decorator(
             name=name,
@@ -217,11 +223,13 @@ class Option:
             A decorator that attaches the option metadata to the function.
 
         Example:
-            @router.command(name="purge", description="Purge a channel")
-            @Option.user(name="channel", description="Target channel to purge", required=True)
-            async def purge(ctx, channel: Snowflake):
-                ...
-                return 'Channel purged'
+        ```python
+        @router.command(name="purge", description="Purge a channel")
+        @Option.user(name="channel", description="Target channel to purge", required=True)
+        async def purge(ctx, channel: Snowflake):
+            ...
+            return 'Channel purged'
+        ```
         """
         return Option.__create_operation_decorator(
             name=name,
@@ -246,11 +254,13 @@ class Option:
             A decorator that attaches the option metadata to the function.
 
         Example:
-            @router.command(name="rmrole", description="Delete a role")
-            @Option.role(name="role", description="role to delete", required=True)
-            async def purge(ctx, role: Snowflake):
-                ...
-                return 'Role purged'
+        ```python
+        @router.command(name="rmrole", description="Delete a role")
+        @Option.role(name="role", description="role to delete", required=True)
+        async def purge(ctx, role: Snowflake):
+            ...
+            return 'Role purged'
+        ```
         """
         return Option.__create_operation_decorator(
             name=name,
@@ -275,10 +285,12 @@ class Option:
             A decorator that attaches the option metadata to the function.
 
         Example:
+        ```python
         @router.command(name="warn", description="Warn a user or role")
         @Option.mentionable(name="target", description="User or role to warn", required=True)
         async def warn(ctx, target: Snowflake):
             return f"⚠️ Warning issued to <@&{target}>"
+        ```
         """
         return Option.__create_operation_decorator(
             name=name,
@@ -303,16 +315,17 @@ class Option:
             A decorator that attaches the option metadata to the function.
 
         Example:
+        ```python
         @router.command(name="ban", description="Ban a user")
         @Option.user(name="target", description="User to ban", required=True)
         @Option.boolean(name="soft", description="Is this a softban", required=True)
         async def warn(ctx, target: Snowflake, soft: bool):
-            ...
             if soft:
                 ...
             else:
                 ...
             return 'Command executed'
+        ```
         """
         return Option.__create_operation_decorator(
             name=name,
@@ -338,10 +351,12 @@ class Option:
             A decorator that attaches the option metadata to the function.
 
         Example:
+        ```python
         @router.command(name="rate", description="Rate something")
         @Option.number(name="score", description="Rating from 0 to 10", required=True)
         async def rate(ctx, score: float):
             return f"Rating: {score}/10 ⭐"
+        ```
         """
         return Option.__create_operation_decorator(
             name=name,
