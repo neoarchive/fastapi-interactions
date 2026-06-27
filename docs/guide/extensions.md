@@ -19,6 +19,9 @@ my-bot/
 
 Each module in the `commands/` package defines one or more routers.
 
+!!! warning
+    Subdirectories containing routers must have `__init__.py` files to be recognized as packages. The top-level `commands` directory can omit it (Python treats it as a namespace package), but it's recommended to include one for clarity.
+
 ## Defining a router in a module
 
 Create `commands/general.py`:
