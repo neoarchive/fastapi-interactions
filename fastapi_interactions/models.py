@@ -1,6 +1,7 @@
-from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, Any
 from enum import IntEnum, IntFlag
+from typing import Any, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 Snowflake = str
 
@@ -12,14 +13,15 @@ class _ApiFlag(IntFlag):
 
 
 class IntegrationType(_ApiFlag):
-    GUILD_INSTALL = 1 << 0 # API VALUE 0
-    USER_INSTALL = 1 << 1 # API VALUE 1
+    GUILD_INSTALL = 1 << 0  # API VALUE 0
+    USER_INSTALL = 1 << 1  # API VALUE 1
     ALL = GUILD_INSTALL | USER_INSTALL
 
+
 class InteractionContext(_ApiFlag):
-    GUILD = 1 << 0 # API VALUE 0
-    BOT_DM = 1 << 1 # API VALUE 1
-    PRIVATE_CHANNEL = 1 << 2 # VALUE VALUE 2
+    GUILD = 1 << 0  # API VALUE 0
+    BOT_DM = 1 << 1  # API VALUE 1
+    PRIVATE_CHANNEL = 1 << 2  # VALUE VALUE 2
     ALL = GUILD | BOT_DM | PRIVATE_CHANNEL
 
 

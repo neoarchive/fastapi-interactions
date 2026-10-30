@@ -1,25 +1,26 @@
+import importlib
+import inspect
+import json
+import pkgutil
+import types
+from typing import Any
+
+import httpx
 from fastapi import FastAPI, Request
-from .middleware import VerifySignatureMiddleware
-from .responses import InteractionResponse, PongResponse, MessageResponse
 from fastapi.responses import JSONResponse
+from loguru import logger
+from pydantic import ValidationError
+
+from .commands import Command, CommandRouter
 from .context import Context
+from .middleware import VerifySignatureMiddleware
 from .models import (
-    InteractionType,
     ApplicationCommandData,
     Interaction,
+    InteractionType,
     Snowflake,
 )
-from typing import Any
-from .commands import Command
-from pydantic import ValidationError
-from .commands import CommandRouter
-import json
-import httpx
-import importlib
-import pkgutil
-from loguru import logger
-import inspect
-import types
+from .responses import InteractionResponse, MessageResponse, PongResponse
 
 
 async def call_with_options(callback: callable, ctx: Context) -> Any:
@@ -246,11 +247,9 @@ class Bot:
                 global_payloads.append(command.meta.as_payload())
 
         if global_payloads:
-            print(global_payloads)
             self.__put__commands(f"{self.base_url}/commands", global_payloads)
 
         for guild_id, payload in guild_payloads.items():
-            print(payload)
             self.__put__commands(f"{self.base_url}/guilds/{guild_id}/commands", payload)
 
     def __put__commands(self, url: str, payload: list) -> None:

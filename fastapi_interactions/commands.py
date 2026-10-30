@@ -1,5 +1,4 @@
 import sys
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from .models import (
@@ -65,19 +64,23 @@ class CommandRouter:
         guild_id: Snowflake | None = None,
         *,
         integration_types: IntegrationType | None = None,
-        contexts: InteractionContext | None = None
+        contexts: InteractionContext | None = None,
     ):
         self.name = name or self.__infer_name()
         self.guild_id = guild_id
 
-        if guild_id is not None and (integration_types is not None or contexts is not None):
-            raise ValueError(f'Router {self.name} is guild scoped. Cannt bind integration/interaction types')
+        if guild_id is not None and (
+            integration_types is not None or contexts is not None
+        ):
+            raise ValueError(
+                f"Router {self.name} is guild scoped. Cannt bind integration/interaction types"
+            )
 
         if integration_types is not None and not integration_types:
-            raise ValueError('integration types cannot be empty;')
+            raise ValueError("integration types cannot be empty;")
 
         if contexts is not None and not contexts:
-            raise ValueError('contexts cannot be empty')
+            raise ValueError("contexts cannot be empty")
 
         self.integration_types = integration_types
         self.contexts = contexts
