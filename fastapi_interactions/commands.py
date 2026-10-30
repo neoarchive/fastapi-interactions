@@ -1,7 +1,13 @@
-from dataclasses import dataclass, field
-from .models import Snowflake, ApplicationCommandOptionType
-from typing import Optional
 import sys
+from collections.abc import Sequence
+from dataclasses import dataclass, field
+
+from .models import (
+    ApplicationCommandOptionType,
+    IntegrationType,
+    InteractionContext,
+    Snowflake,
+)
 
 OptionType = ApplicationCommandOptionType
 
@@ -28,28 +34,53 @@ class CommandMeta:
     description: str
     options: list[CommandOption] = field(default_factory=list)
     type: int = 1
+    integration_types: list[IntegrationType] | None = None
+    contexts: list[InteractionContext] | None = None
 
     def as_payload(self):
-        return {
+        payload = {
             "name": self.name,
             "description": self.description,
             "type": self.type,
             "options": [option.as_payload() for option in self.options],
         }
+        if self.integration_types is not None:
+            payload["integration_types"] = [int(i) for i in self.integration_types]
+        if self.contexts is not None:
+            payload["contexts"] = [int(c) for c in self.contexts]
+        return payload
 
 
 @dataclass(slots=True)
 class Command:
     callback: callable
     meta: CommandMeta
-    guild_id: Optional[Snowflake] = None
+    guild_id: Snowflake | None = None
 
 
 class CommandRouter:
-    def __init__(self, name: str = None, guild_id: Optional[Snowflake] = None):
+    def __init__(
+        self,
+        name: str | None = None,
+        guild_id: Snowflake | None = None,
+        *,
+        integration_types: Sequence[IntegrationType] | None = None,
+        contexts: Sequence[InteractionContext] | None = None,
+    ):
+        if guild_id is not None and (
+            integration_types is not None or contexts is not None
+        ):
+            raise ValueError(
+                f"Router {self.name} is guild scoped; integration_types and contexts only apply to global commands"
+            )
+
         self.name = name or self.__infer_name()
-        self.guild_id: Optional[Snowflake] = guild_id
+        self.guild_id = guild_id
         self.commands: dict[str, Command] = {}
+        self.integration_types = (
+            list(integration_types) if integration_types is not None else None
+        )
+        self.contexts = list(contexts) if contexts is not None else None
 
     def __infer_name(self) -> str:
         frame = sys._getframe(2)
@@ -86,6 +117,8 @@ class CommandRouter:
             )
             meta.name = name
             meta.description = description
+            meta.integration_types = self.integration_types
+            meta.contexts = self.contexts
             self.commands[name] = Command(
                 callback=func, meta=meta, guild_id=self.guild_id
             )
@@ -97,10 +130,12 @@ class CommandRouter:
 
 class Option:
     @staticmethod
-    def __create_operation_decorator(name: str, description: str, option_type: OptionType, required: bool = True):
+    def __create_operation_decorator(
+        name: str, description: str, option_type: OptionType, required: bool = True
+    ):
         def decorator(func):
             meta = getattr(
-                func, '_command_meta', CommandMeta(name='', description='', type=1)
+                func, "_command_meta", CommandMeta(name="", description="", type=1)
             )
 
             meta.options.insert(
@@ -109,11 +144,12 @@ class Option:
                     name=name,
                     description=description,
                     type=option_type,
-                    required=required
-                )
+                    required=required,
+                ),
             )
             func._command_meta = meta
             return func
+
         return decorator
 
     @staticmethod
@@ -143,7 +179,7 @@ class Option:
             name=name,
             description=description,
             option_type=OptionType.STRING,
-            required=required
+            required=required,
         )
 
     @staticmethod
@@ -173,7 +209,7 @@ class Option:
             name=name,
             description=description,
             option_type=OptionType.INTEGER,
-            required=required
+            required=required,
         )
 
     @staticmethod
@@ -204,7 +240,7 @@ class Option:
             name=name,
             description=description,
             option_type=OptionType.USER,
-            required=required
+            required=required,
         )
 
     @staticmethod
@@ -235,7 +271,7 @@ class Option:
             name=name,
             description=description,
             option_type=OptionType.CHANNEL,
-            required=required
+            required=required,
         )
 
     @staticmethod
@@ -266,7 +302,7 @@ class Option:
             name=name,
             description=description,
             option_type=OptionType.ROLE,
-            required=required
+            required=required,
         )
 
     @staticmethod
@@ -296,7 +332,7 @@ class Option:
             name=name,
             description=description,
             option_type=OptionType.MENTIONABLE,
-            required=required
+            required=required,
         )
 
     @staticmethod
@@ -331,7 +367,7 @@ class Option:
             name=name,
             description=description,
             option_type=OptionType.BOOLEAN,
-            required=required
+            required=required,
         )
 
     @staticmethod
@@ -362,5 +398,5 @@ class Option:
             name=name,
             description=description,
             option_type=OptionType.NUMBER,
-            required=required
+            required=required,
         )

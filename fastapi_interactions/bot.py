@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from .middleware import VerifySignatureMiddleware
 from .responses import InteractionResponse, PongResponse, MessageResponse
+from fastapi.responses import JSONResponse
 from .context import Context
 from .models import (
     InteractionType,
@@ -107,6 +108,7 @@ class Bot:
                 # print(e.errors())
                 return await MessageResponse("Unexpected error", ephemeral=True)
 
+            raise Exception("Unexpected error occurred")
             context = Context(
                 interaction=interaction, options=application_command, http=self.http
             )
@@ -117,6 +119,12 @@ class Bot:
 
         return await MessageResponse("Unsupported interaction received", ephemeral=True)
 
+    async def add_error_handler(self, exc: Exception, func: callable):
+        pass
+
+    async def _handle_exception(self, request: Request, exc: Exception):
+        return JSONResponse(await MessageResponse(str(exc), ephemeral=True))
+
     def _register_routes(self) -> None:
         """Set up middleware and the interactions endpoint.
 
@@ -124,6 +132,7 @@ class Bot:
         for the interactions endpoint. Called during initialization.
         """
         self.app.add_middleware(VerifySignatureMiddleware, public_key=self.public_key)
+        self.app.add_exception_handler(Exception, self._handle_exception)
         self.app.add_api_route(
             self.interactions_path, endpoint=self.process_interactions, methods=["POST"]
         )
@@ -237,9 +246,11 @@ class Bot:
                 global_payloads.append(command.meta.as_payload())
 
         if global_payloads:
+            print(global_payloads)
             self.__put__commands(f"{self.base_url}/commands", global_payloads)
 
         for guild_id, payload in guild_payloads.items():
+            print(payload)
             self.__put__commands(f"{self.base_url}/guilds/{guild_id}/commands", payload)
 
     def __put__commands(self, url: str, payload: list) -> None:
