@@ -5,15 +5,22 @@ from enum import IntEnum, IntFlag
 Snowflake = str
 
 
-class IntegrationType(IntEnum):
-    GUILD_INSTALL = 0
-    USER_INSTALL = 1
+class _ApiFlag(IntFlag):
+    def to_api(self) -> list[int]:
+        """Bit positions set in this flag, e.g. GUILD|PRIVATE_CHANNEL -> [0, 2]."""
+        return [i for i in range(self.bit_length()) if self & (1 << i)]
 
 
-class InteractionContext(IntEnum):
-    GUILD = 0
-    BOT_DM = 1
-    PRIVATE_CHANNEL = 2
+class IntegrationType(_ApiFlag):
+    GUILD_INSTALL = 1 << 0 # API VALUE 0
+    USER_INSTALL = 1 << 1 # API VALUE 1
+    ALL = GUILD_INSTALL | USER_INSTALL
+
+class InteractionContext(_ApiFlag):
+    GUILD = 1 << 0 # API VALUE 0
+    BOT_DM = 1 << 1 # API VALUE 1
+    PRIVATE_CHANNEL = 1 << 2 # VALUE VALUE 2
+    ALL = GUILD | BOT_DM | PRIVATE_CHANNEL
 
 
 class InteractionType(IntEnum):

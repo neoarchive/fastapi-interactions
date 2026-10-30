@@ -34,8 +34,8 @@ class CommandMeta:
     description: str
     options: list[CommandOption] = field(default_factory=list)
     type: int = 1
-    integration_types: list[IntegrationType] | None = None
-    contexts: list[InteractionContext] | None = None
+    integration_types: IntegrationType | None = None
+    contexts: InteractionContext | None = None
 
     def as_payload(self):
         payload = {
@@ -45,9 +45,9 @@ class CommandMeta:
             "options": [option.as_payload() for option in self.options],
         }
         if self.integration_types is not None:
-            payload["integration_types"] = [int(i) for i in self.integration_types]
+            payload["integration_types"] = self.integration_types.to_api()
         if self.contexts is not None:
-            payload["contexts"] = [int(c) for c in self.contexts]
+            payload["contexts"] = self.contexts.to_api()
         return payload
 
 
@@ -64,23 +64,24 @@ class CommandRouter:
         name: str | None = None,
         guild_id: Snowflake | None = None,
         *,
-        integration_types: Sequence[IntegrationType] | None = None,
-        contexts: Sequence[InteractionContext] | None = None,
+        integration_types: IntegrationType | None = None,
+        contexts: InteractionContext | None = None
     ):
-        if guild_id is not None and (
-            integration_types is not None or contexts is not None
-        ):
-            raise ValueError(
-                f"Router {self.name} is guild scoped; integration_types and contexts only apply to global commands"
-            )
-
         self.name = name or self.__infer_name()
         self.guild_id = guild_id
+
+        if guild_id is not None and (integration_types is not None or contexts is not None):
+            raise ValueError(f'Router {self.name} is guild scoped. Cannt bind integration/interaction types')
+
+        if integration_types is not None and not integration_types:
+            raise ValueError('integration types cannot be empty;')
+
+        if contexts is not None and not contexts:
+            raise ValueError('contexts cannot be empty')
+
+        self.integration_types = integration_types
+        self.contexts = contexts
         self.commands: dict[str, Command] = {}
-        self.integration_types = (
-            list(integration_types) if integration_types is not None else None
-        )
-        self.contexts = list(contexts) if contexts is not None else None
 
     def __infer_name(self) -> str:
         frame = sys._getframe(2)
