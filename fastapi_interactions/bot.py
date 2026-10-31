@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
 from pydantic import ValidationError
+from starlette.background import BackgroundTask
 
 from .commands import Command, CommandRouter
 from .context import Context
@@ -20,7 +21,13 @@ from .models import (
     InteractionType,
     Snowflake,
 )
-from .responses import InteractionResponse, MessageResponse, PongResponse
+from .responses import (
+    DeferResponse,
+    InteractionResponse,
+    MessageResponse,
+    PongResponse,
+    _JSONResponse,
+)
 
 
 async def call_with_options(callback: callable, ctx: Context) -> Any:
@@ -96,7 +103,7 @@ class Bot:
         payload = json.loads(request.state.raw_body)
 
         if payload["type"] == InteractionType.PING:
-            return await PongResponse()
+            return _JSONResponse(PongResponse())
 
         if payload["type"] == InteractionType.APPLICATION_COMMAND:
             """Construct Context"""
@@ -105,11 +112,9 @@ class Bot:
                 application_command = ApplicationCommandData.model_validate(
                     interaction.data
                 )
-            except (ValidationError, Exception):
-                # print(e.errors())
-                return await MessageResponse("Unexpected error", ephemeral=True)
+            except (ValidationError, Exception) as e:
+                return _JSONResponse(MessageResponse("Unexpected error", ephemeral=True))
 
-            raise Exception("Unexpected error occurred")
             context = Context(
                 interaction=interaction, options=application_command, http=self.http
             )
@@ -118,13 +123,13 @@ class Bot:
                 command_name=application_command.name, ctx=context
             )
 
-        return await MessageResponse("Unsupported interaction received", ephemeral=True)
+        return _JSONResponse(MessageResponse("Unsupported interaction received", ephemeral=True))
 
     async def add_error_handler(self, exc: Exception, func: callable):
         pass
 
     async def _handle_exception(self, request: Request, exc: Exception):
-        return JSONResponse(await MessageResponse(str(exc), ephemeral=True))
+        return _JSONResponse(MessageResponse(str(exc), ephemeral=True))
 
     def _register_routes(self) -> None:
         """Set up middleware and the interactions endpoint.
@@ -289,14 +294,24 @@ class Bot:
         """
         command = self.commands.get(command_name)
         if command is None:
-            return await MessageResponse("Unknown command", ephemeral=True)
+            return _JSONResponse(MessageResponse("Unknown command", ephemeral=True))
 
         result = await call_with_options(command.callback, ctx)
 
-        if not isinstance(result, InteractionResponse):
-            result = MessageResponse(str(result))
+        background = None
+        if isinstance(result, DeferResponse) and result.finish:
+            background = BackgroundTask(self._run_finish, result.finish, ctx=ctx)
+        if isinstance(result, str):
+            result = MessageResponse(result)
 
-        return await result
+        return _JSONResponse(result, background=background)
+
+    async def _run_finish(self, finish, ctx: Context) -> None:
+        try:
+            await finish()
+        except Exception as e:
+            logger.exception('Defer handler failed')
+            # await self._report_failure(ctx)
 
     def delete_all_commands(self, guild_id: Snowflake = None) -> None:
         """

@@ -1,10 +1,23 @@
-from dataclasses import dataclass
+import asyncio
 from abc import ABC, abstractmethod
+from collections.abc import Callable
+from dataclasses import InitVar, dataclass, field
+from typing import Any
+
+from fastapi.responses import JSONResponse
+
 from .models import (
     InteractionCallbackType,
     MessageFlags,
 )
-import asyncio
+
+
+class _JSONResponse(JSONResponse):
+
+    def render(self, content: Any) -> bytes:
+        if isinstance(content, InteractionResponse):
+            content = content.to_dict()
+        return super().render(content)
 
 
 class InteractionResponse(ABC):
@@ -15,9 +28,6 @@ class InteractionResponse(ABC):
 
     async def __call__(self) -> dict:
         return self.to_dict()
-
-    def __await__(self):
-        return self.__call__().__await__()
 
 
 class PongResponse(InteractionResponse):
@@ -31,10 +41,10 @@ class PongResponse(InteractionResponse):
 class MessageResponse(InteractionResponse):
     callback_type = InteractionCallbackType.MESSAGE
     content: str
-    ephemeral: bool = False
+    ephemeral: InitVar[bool] = False
+    flags: MessageFlags = field(init=False)
 
-    def __init__(self, content: str, ephemeral: bool = False):
-        self.content = content
+    def __post_init__(self, ephemeral: bool):
         self.flags = MessageFlags.EPHEMERAL if ephemeral else MessageFlags(0)
 
     def to_payload(self):
@@ -47,15 +57,12 @@ class MessageResponse(InteractionResponse):
 @dataclass(slots=True)
 class DeferResponse(InteractionResponse):
     callback_type = InteractionCallbackType.DEFER
+    ephemeral: InitVar[bool] = False
+    finish: Callable | None = field(default=None, repr=None, compare=None)
+    flags: MessageFlags = field(init=False)
 
-    def __init__(self, ephemeral: bool = False, finish: callable = None):
+    def __post_init__(self, ephemeral: bool):
         self.flags = MessageFlags.EPHEMERAL if ephemeral else MessageFlags(0)
-        self.finish = finish
 
     def to_dict(self):
         return {"type": self.callback_type, "data": {"flags": int(self.flags)}}
-
-    async def __call__(self):
-        if self.finish:
-            asyncio.create_task(self.finish())
-        return self.to_dict()
