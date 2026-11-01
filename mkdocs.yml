@@ -43,6 +43,7 @@ nav:
     - Deploying to Vercel: guide/vercel.md
   - Guide:
     - Commands: guide/commands.md
+    - Integration Types and Interaction Contexts: guide/integration-types-and-interaction-contexts.md
     - Responses: guide/responses.md
     - Context: guide/context.md
     - Extensions: guide/extensions.md
@@ -55,4 +56,6 @@ nav:
     - Context: api/context.md
     - Responses: api/responses.md
     - Models: api/models.md
+    - Integration Types: api/integration_types.md
+    - Interaction Contexts: api/interaction_contexts.md
     - Middleware: api/middleware.md

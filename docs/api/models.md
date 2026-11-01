@@ -4,6 +4,11 @@ Pydantic models for parsing Discord's interaction payloads and the context avail
 
 ## Enumerations
 
+!!! tip
+    `IntegrationType` and `InteractionContext` have dedicated reference pages:
+    [Integration Types](integration_types.md) and
+    [Interaction Contexts](interaction_contexts.md).
+
 ### ::: fastapi_interactions.models.InteractionType
     options:
       show_source: true

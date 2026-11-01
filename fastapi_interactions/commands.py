@@ -1,4 +1,12 @@
+"""Command registration, routing, and option decorators.
+
+Routers group commands and carry settings such as guild scope, integration
+types, and interaction contexts. The :class:`Option` decorators attach option
+metadata that is later bound to command callback parameters.
+"""
+
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from .models import (
@@ -13,6 +21,8 @@ OptionType = ApplicationCommandOptionType
 
 @dataclass
 class CommandOption:
+    """A single option declared on a command."""
+
     name: str
     description: str
     type: OptionType = OptionType.STRING
@@ -29,6 +39,12 @@ class CommandOption:
 
 @dataclass(slots=True)
 class CommandMeta:
+    """Registration metadata sent to Discord for a command.
+
+    ``integration_types`` and ``contexts`` control where the command can be
+    installed and invoked. They are only valid for globally scoped commands.
+    """
+
     name: str
     description: str
     options: list[CommandOption] = field(default_factory=list)
@@ -52,12 +68,31 @@ class CommandMeta:
 
 @dataclass(slots=True)
 class Command:
+    """A command callback paired with its registration metadata."""
+
     callback: callable
     meta: CommandMeta
     guild_id: Snowflake | None = None
 
 
 class CommandRouter:
+    """A collection of commands that can be attached to a bot.
+
+    Args:
+        name: Optional router name used in logs. Inferred from the caller's
+            module when omitted.
+        guild_id: Scope every command in the router to a single guild. Guild
+            scoped commands cannot set ``integration_types`` or ``contexts``.
+        integration_types: Where commands can be installed. Use
+            :class:`~fastapi_interactions.models.IntegrationType` flags.
+        contexts: Where commands can be invoked. Use
+            :class:`~fastapi_interactions.models.InteractionContext` flags.
+
+    Raises:
+        ValueError: If a guild-scoped router also sets ``integration_types`` or
+            ``contexts``, or if either flag value is empty.
+    """
+
     def __init__(
         self,
         name: str | None = None,
@@ -133,6 +168,13 @@ class CommandRouter:
 
 
 class Option:
+    """Decorators that attach typed options to command callbacks.
+
+    Each static method registers one Discord option type. Decorate the command
+    below ``@router.command(...)`` so the option metadata is collected before
+    the command is registered.
+    """
+
     @staticmethod
     def __create_operation_decorator(
         name: str, description: str, option_type: OptionType, required: bool = True
@@ -157,7 +199,7 @@ class Option:
         return decorator
 
     @staticmethod
-    def string(name: str, description: str, required: bool = True):
+    def string(name: str, description: str, required: bool = True) -> Callable:
         """Register a string option on a command.
 
         Decorates a command callback to add a string option parameter. The option name
@@ -187,7 +229,7 @@ class Option:
         )
 
     @staticmethod
-    def integer(name: str, description: str, required: bool = True):
+    def integer(name: str, description: str, required: bool = True) -> Callable:
         """Register an integer option on a command.
 
         Decorates a command callback to add an integer option parameter. The option name
@@ -217,7 +259,7 @@ class Option:
         )
 
     @staticmethod
-    def user(name: str, description: str, required: bool = True):
+    def user(name: str, description: str, required: bool = True) -> Callable:
         """Register a user option on a command.
 
         Decorates a command callback to add a user option parameter. The option name
@@ -248,7 +290,7 @@ class Option:
         )
 
     @staticmethod
-    def channel(name: str, description: str, required: bool = True):
+    def channel(name: str, description: str, required: bool = True) -> Callable:
         """Register a channel option on a command.
 
         Decorates a command callback to add a channel option parameter. The option name
@@ -279,7 +321,7 @@ class Option:
         )
 
     @staticmethod
-    def role(name: str, description: str, required: bool = True):
+    def role(name: str, description: str, required: bool = True) -> Callable:
         """Register a role option on a command.
 
         Decorates a command callback to add a channel option parameter. The option name
@@ -310,7 +352,7 @@ class Option:
         )
 
     @staticmethod
-    def mentionable(name: str, description: str, required: bool = True):
+    def mentionable(name: str, description: str, required: bool = True) -> Callable:
         """Register a mentionable option on a command.
 
         Decorates a command callback to add a channel option parameter. The option name
@@ -340,7 +382,7 @@ class Option:
         )
 
     @staticmethod
-    def boolean(name: str, description: str, required: bool = True):
+    def boolean(name: str, description: str, required: bool = True) -> Callable:
         """Register a boolean option on a command.
 
         Decorates a command callback to add a boolean option parameter. The option name
@@ -375,7 +417,7 @@ class Option:
         )
 
     @staticmethod
-    def number(name: str, description: str, required: bool = True):
+    def number(name: str, description: str, required: bool = True) -> Callable:
         """Register a number option on a command.
 
         Decorates a command callback to add a number option parameter. The option name

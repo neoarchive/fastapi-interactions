@@ -1,3 +1,10 @@
+"""The bot application: routing, command dispatch, and Discord API syncing.
+
+A :class:`Bot` wraps a FastAPI application, verifies Discord webhook signatures,
+routes interaction payloads to registered commands, and registers commands with
+Discord's API.
+"""
+
 import importlib
 import inspect
 import json
@@ -69,6 +76,14 @@ async def call_with_options(callback: callable, ctx: Context) -> Any:
 
 
 class Bot:
+    """A Discord HTTP interactions bot built on FastAPI.
+
+    The bot exposes a single interactions endpoint (``/interactions`` by
+    default) and keeps commands in an internal registry. Use
+    :meth:`attach_router` or :meth:`load_extension` to register commands, then
+    sync them with Discord using :meth:`sync_commands`.
+    """
+
     def __init__(
         self,
         app_id: int,
